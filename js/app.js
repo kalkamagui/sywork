@@ -114,7 +114,7 @@
       '<td class="c" data-label="결혼"><input data-f="married" type="checkbox"' + (d.married ? ' checked' : '') + '></td>' +
       '<td class="c" data-label="고교 휴학"><input data-f="leave" type="checkbox"' + (d.leave ? ' checked' : '') + '></td>' +
       '<td class="c" data-label="시설·소년원"><input data-f="institution" type="checkbox"' + (d.institution ? ' checked' : '') + '></td>' +
-      '<td class="c" data-label="취·창업 특례"><input data-f="selfReliance" type="checkbox"' + (d.selfReliance ? ' checked' : '') + ' title="18~34세 연령초과 자녀가 월 90만원 이상 취·창업 소득이 있어 자립지원 별도가구 특례 적용"></td>' +
+      '<td class="c" data-label="취·창업 특례"><input data-f="selfReliance" type="checkbox"' + (d.selfReliance ? ' checked' : '') + ' title="18~34세 자녀가 월 90만원 이상 취·창업 소득이 있어 자립지원 별도가구 특례 적용(지원·산정 가구원에서 제외)"></td>' +
       '<td class="del-cell"><button class="btn del" title="삭제" aria-label="자녀 삭제">✕</button></td>';
     tr.querySelector('.del').addEventListener('click', function () { tr.remove(); buildIncomeTable(); });
     tr.addEventListener('change', buildIncomeTable);

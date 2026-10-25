@@ -95,6 +95,54 @@ test('연령초과 + 자립 특례 자녀는 소득인정액 산정 가구원에
   assert.strictEqual(y.counted, true);
 });
 
+test('자립 특례는 18~34세 자녀만: 35세 이상 자녀는 체크해도 산정 가구원에 포함', function () {
+  var base = { y: 2026, m: 3 };
+  var k = Calc.classifyChild({ name: '큰애', birth: '1986-01', school: 'none', raisedByApplicant: true, selfReliance: true }, base);
+  assert.strictEqual(k.counted, true);
+  // 18세 생일이 속한 달까지는 적용 안 함, 다음 달부터 적용 (p.64)
+  assert.strictEqual(Calc.classifyChild({ birth: '2008-03', school: 'none', raisedByApplicant: true, selfReliance: true }, base).counted, true);
+  assert.strictEqual(Calc.classifyChild({ birth: '2008-02', school: 'none', raisedByApplicant: true, selfReliance: true }, base).counted, false);
+});
+test('22세 미만 취학 자녀(산업기능요원 등)도 자립 특례 체크 시 지원·산정 가구원에서 제외', function () {
+  var base = { y: 2026, m: 3 };
+  var k = Calc.classifyChild({ name: '둘째', birth: '2006-01', school: 'univ', raisedByApplicant: true, selfReliance: true }, base);
+  assert.strictEqual(k.supported, false);
+  assert.strictEqual(k.counted, false);
+  // 가구원수에도 반영: 신청인 + 막내 = 2인
+  var r = evaluate({ children: [KID, { name: '둘째', birth: '2006-01', school: 'univ', raisedByApplicant: true, selfReliance: true }] });
+  assert.strictEqual(r.countSize, 2);
+});
+
+// ---------- 다자녀 가구 자동차 (p.138) ----------
+var MULTI_CAR = [{ type: 'passenger', use: 'general', cc: 2200, seats: 7, age: 11, value: 5000000 }];
+test('다자녀 자동차 기준: 양육하는 18세 미만 자녀 2명이면 일반재산 4.17%', function () {
+  var r = evaluate({ children: [KID, { name: '둘째', birth: '2016-05', school: 'elem', raisedByApplicant: true }], assets: { cars: MULTI_CAR } });
+  assert.strictEqual(r.assets.cars.general.length, 1);
+});
+test('다자녀 자동차 기준: 양육하지 않거나 시설 입소 자녀는 세지 않음', function () {
+  var notRaised = evaluate({ children: [KID, { name: '둘째', birth: '2016-05', school: 'elem', raisedByApplicant: false }], assets: { cars: MULTI_CAR } });
+  assert.strictEqual(notRaised.assets.cars.general.length, 0);
+  assert.strictEqual(notRaised.assets.cars.full.length, 1);
+  var inst = evaluate({ children: [KID, { name: '둘째', birth: '2016-05', school: 'elem', raisedByApplicant: true, institution: true }], assets: { cars: MULTI_CAR } });
+  assert.strictEqual(inst.assets.cars.full.length, 1);
+});
+
+// ---------- 7인 이상 가구 ----------
+function sixKids() {
+  var list = [];
+  for (var i = 0; i < 6; i++) list.push({ name: '자녀' + i, birth: (2010 + i) + '-05', school: 'elem', raisedByApplicant: true });
+  return list;
+}
+test('7인 가구: 사적이전소득·자연적 소비금액이 6인 기준으로 계산됐음을 경고', function () {
+  var r = evaluate({ children: sixKids(), household: { privateRegular: 1500000 }, assets: { dispGeneral: 10000000, dispMonth: '2026-01' } });
+  assert.strictEqual(r.countSize, 7);
+  assert.ok(r.warnings.some(function (w) { return w.indexOf('사적이전소득') >= 0 && w.indexOf('6인') >= 0; }));
+});
+test('7인 가구라도 사적이전소득·처분 재산이 없으면 해당 경고 없음', function () {
+  var r = evaluate({ children: sixKids() });
+  assert.ok(!r.warnings.some(function (w) { return w.indexOf('사적이전소득') >= 0; }));
+});
+
 // ---------- 정기지원 사적이전소득 (p.100~102) ----------
 test('정기 지원 + 양육비 합계에서 기준중위소득 15%를 한 번만 제외', function () {
   // 2인가구 15% = 629,893.8원 (지침 예시 629,894원)

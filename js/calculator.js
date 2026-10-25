@@ -65,6 +65,17 @@
       res.notes.push('아동복지시설 입소·소년원 등 수용 중 → 지원가구원 제외(p.56)');
       return res;
     }
+    // 자립지원 별도가구 특례 (p.63~64): 18~34세 취·창업 자녀는 지원·산정 가구원 모두에서 제외
+    // (22세 미만 취학 자녀 중 산업기능요원 등도 포함, p.56 표)
+    if (c.selfReliance) {
+      var sb = parseYM(c.birth);
+      var from18 = monthIndex(base) > (sb.y + R.age.selfRelianceMin) * 12 + (sb.m - 1);
+      if (from18 && underAge(c.birth, base, R.age.selfRelianceMax)) {
+        res.notes.push('취·창업 자녀(자립지원 별도가구 특례) → 지원·산정 가구원에서 제외(p.63)');
+        return res;
+      }
+      res.notes.push('자립지원 별도가구 특례는 18~34세(18세 생일 다음 달 ~ 35세 생일 전달) 자녀만 → 특례 미적용(p.64)');
+    }
     var schooling = ['elem', 'mid', 'high', 'univ'].indexOf(res.school) >= 0 || c.schooling;
     var studentLimit = R.age.childStudent;
     var militaryMonths = num(c.militaryMonths);
@@ -91,8 +102,6 @@
       // 연령초과 자녀: 지원대상 제외, 결혼하지 않았으면 소득인정액 산정 가구원 포함
       if (c.married) {
         res.notes.push('연령초과·결혼한 자녀 → 지원·산정 모두 제외(p.61)');
-      } else if (c.selfReliance) {
-        res.notes.push('연령초과 취·창업 자녀(자립지원 별도가구 특례) → 산정 가구원에서도 제외(p.63)');
       } else {
         res.counted = true;
         res.notes.push('연령초과 자녀 → 지원대상 제외, 소득인정액 산정 가구원에는 포함(p.59)');
@@ -407,7 +416,8 @@
     var kids = (input.children || []).map(function (c) { return classifyChild(c, base); });
     var supportedKids = kids.filter(function (k) { return k.supported; });
     var countedKids = kids.filter(function (k) { return k.counted; });
-    var kidsUnder18 = (input.children || []).filter(function (c) { return c.birth && underAge(c.birth, base, R.age.child); }).length;
+    // 다자녀 자동차 기준(p.138): 실제 지원대상인 18세 미만 (손)자녀만 셈
+    var kidsUnder18 = (input.children || []).filter(function (c, i) { return kids[i].supported && underAge(c.birth, base, R.age.child); }).length;
 
     var spouseIncluded = !grand && input.reason === 'spouseDisabled';
     var supportSize = 1 + (spouseIncluded ? 1 : 0) + supportedKids.length;
@@ -524,6 +534,13 @@
     var median = threshold(R.median, sizeForLine);
     if (sizeForLine > 6) {
       warnings.push(sizeForLine + '인 가구는 지침 표(2~6인)에 금액이 없습니다. 사회보장정보시스템의 해당 가구원수 기준 중위소득으로 확인하세요.');
+      var usedSix = [];
+      if (privateYear > 0) usedSix.push('사적이전소득 제외 기준(중위 15%·50%)');
+      var a0 = input.assets || {};
+      if (a0.dispMonth && (num(a0.dispGeneral) || num(a0.dispFinancial))) usedSix.push('처분 재산의 자연적 소비금액(중위 50%)');
+      if (usedSix.length) {
+        warnings.push(usedSix.join('과 ') + '은 지침 표의 최대인 6인 기준 중위소득으로 계산했습니다. ' + sizeForLine + '인 기준보다 작게 빠지므로 소득인정액이 실제보다 높게 나올 수 있습니다.');
+      }
     }
     var pass65 = line65 != null ? recognized <= line65 : null;
     var pass72 = line72 != null ? recognized <= line72 : null;

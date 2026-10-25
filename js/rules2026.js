@@ -35,7 +35,10 @@ var RULES = {
     youthInfant: 2,     // 청소년한부모 0~1세 영아
     youngAdultParentMax: 35, // 25~34세 청년 한부모 (35세 미만)
     youngAdultParentMin: 25,
-    unmarriedExtraMin: 35    // 35세 이상 미혼 한부모 추가아동양육비
+    unmarriedExtraMin: 35,   // 35세 이상 미혼 한부모 추가아동양육비
+    // 자립지원 별도가구 특례 취·창업 자녀 (p.63~64): 18세 생일이 속한 달의 다음 달부터 35세 생일이 속한 달의 전 달까지
+    selfRelianceMin: 18,
+    selfRelianceMax: 35
   },
 
   // 근로·사업소득 공제 (p.88~90) — 가장 유리한 하나 적용
@@ -48,7 +51,7 @@ var RULES = {
     seniorAge: 65
   },
 
-  // 재산 (p.123, p.151~152)
+  // 재산 (주거용재산 한도 p.115, 기본재산액·환산율 p.151~152)
   regions: {
     seoul:    { label: '서울특별시',            basic: 99000000, housingCap: 172000000 },
     gyeonggi: { label: '경기도',                basic: 80000000, housingCap: 151000000 },
