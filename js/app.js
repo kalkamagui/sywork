@@ -604,10 +604,10 @@
     for (i = 0; i < kids - k6 - ks; i++) children.push({ name: '자녀 ' + (i + 1), birth: (y - 7) + '-' + m + '-01', school: 'none' });
     for (i = 0; i < over; i++) children.push({ name: '연령초과 ' + (i + 1), birth: (y - 25) + '-' + m + '-01', school: 'none' });
     var apBirth = age ? (y - age) + '-' + m + '-01' : '';
-    var carType = $('q-car').value;
-    var carValue = manToWon($('q-carValue').value);
-    var cars = carType === 'general' ? [{ type: 'passenger', use: 'general', cc: 1600, age: 10, value: carValue }]
-      : carType === 'full' ? [{ type: 'other', use: 'general', value: carValue }] : [];
+    // 자동차: 승용 1대로 가정하고 상세 판정과 같은 요건으로 계산 (배기량·가액 둘 다 비면 차 없음)
+    var carValue = manToWon($('q-carValue').value), carCc = num($('q-carCc').value);
+    var cars = (carValue || carCc) ? [{ type: 'passenger', use: $('q-carUse').value, cc: carCc,
+      age: num($('q-carAge').value), seats: num($('q-carSeats').value) || 5, value: carValue }] : [];
     var grand = $('q-type').value === 'grand';
     return {
       baseMonth: base, region: $('q-region').value, familyType: $('q-type').value,
@@ -626,6 +626,19 @@
       '<p class="hint" style="margin-top:10px">근로소득은 신청인 나이 기준 공제를 적용한 대략값입니다. 금융재산·부채·자녀 연령 세부사항에 따라 달라집니다.</p></div>';
     $('q-result').innerHTML = html;
   });
+
+  // 30초 사전 확인: 자동차 입력 아래에 재산 제외 · 4.17% · 100% 판정 사유를 바로 표시
+  function updateCarNote() {
+    var note = $('q-carNote');
+    var cars = Calc.evaluate(quickInput()).assets.cars;
+    var hit = cars.excluded[0] ? ['ok', '재산 제외 — ', cars.excluded[0]]
+      : cars.general[0] ? ['mid', '', cars.general[0]]
+      : cars.full[0] ? ['bad', '', cars.full[0]] : null;
+    note.className = 'car-note' + (hit ? ' ' + hit[0] : '');
+    note.textContent = hit ? hit[1] + hit[2].reason : '';
+  }
+  $('tab-phone').addEventListener('input', updateCarNote);
+  $('tab-phone').addEventListener('change', updateCarNote);
 
   // 30초 사전 확인: 소득인정액 산출 근거
   function quickBasisHtml(r) {
@@ -661,12 +674,13 @@
     $('q-type').value = 'single';
     $('q-region').value = 'gyeonggi';
     $('q-unmarried').checked = false;
-    $('q-car').value = 'none';
+    $('q-carUse').value = 'general';
     $('q-age').value = '';
     $('q-kids').value = '1';
     ['q-kids6', 'q-kidsSchool', 'q-over'].forEach(function (id) { $(id).value = '0'; });
-    ['q-earned', 'q-other', 'q-house', 'q-deposit', 'q-fin', 'q-debt', 'q-carValue'].forEach(function (id) { $(id).value = ''; });
+    ['q-earned', 'q-other', 'q-house', 'q-deposit', 'q-fin', 'q-debt', 'q-carCc', 'q-carAge', 'q-carValue', 'q-carSeats'].forEach(function (id) { $(id).value = ''; });
     $('q-result').innerHTML = Q_RESULT_EMPTY;
+    updateCarNote();
     $('q-age').focus();
   });
   $('q-to-judge').addEventListener('click', function () {
@@ -685,8 +699,7 @@
     if (qi.assets.financial) $('financial').value = wonToMan(qi.assets.financial);
     if (qi.assets.debtFin) $('debtFin').value = wonToMan(qi.assets.debtFin);
     qi.assets.cars.forEach(function (c) {
-      addCar({ name: c.type === 'other' ? '그 외 자동차' : '승용차', type: c.type === 'other' ? 'other' : 'passenger',
-        use: 'general', cc: c.cc, age: c.age, value: c.value });
+      addCar({ name: '승용차', type: c.type, use: c.use, cc: c.cc, seats: c.seats, age: c.age, value: c.value });
     });
     updateVisibility();
     showTab('judge');
@@ -935,6 +948,7 @@
       if (document.querySelector('.tab[data-tab="' + tab + '"]')) showTab(tab);
     } finally {
       restoring = false;
+      updateCarNote();
       setTimeout(markNumbers, 0);
     }
   }

@@ -183,6 +183,13 @@
       r.general = '자녀 2명 이상(모두 18세 미만) 가구 2,500cc 미만 7인승 이상 + 차령 10년 이상 또는 1,000만원 미만';
     }
     else if ((t === 'van' || t === 'truck') && oldOrCheap) r.general = '소형 이하 승합·화물 + 차령 10년 이상 또는 1,000만원 미만';
+    // 일반 승용차가 4.17% 요건에 못 미친 이유
+    if (t === 'passenger' && use === 'general' && hasCc && !r.general) {
+      var why = [];
+      if (cc >= C.ccLimit) why.push('2,000cc 이상' + (ctx.kidsUnder18 >= C.multiChildMinKids && cc < C.multiChildCcLimit ? '(다자녀 예외는 7인승 이상)' : ''));
+      if (!oldOrCheap) why.push('차령 10년 미만이면서 차량가액 1,000만원 이상');
+      r.notes.push('승용 일반재산 요건 미충족: ' + why.join(', '));
+    }
     // 다)-(5) 일반재산: 260cc 이하 이륜차 (2대까지 보유 한도와 별도)
     if (t === 'moto' && hasCc && cc <= C.motorcycleCc) r.moto = '260cc 이하 이륜자동차';
     if (!hasCc && t !== 'truck' && t !== 'truckL' && !(isVan && seats)) r.notes.push('배기량 미입력 — 배기량 기준 요건을 판정하지 못함');

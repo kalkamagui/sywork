@@ -116,16 +116,29 @@
         <label>부채 (대출금·임대보증금 등)
           <input id="q-debt" class="money" inputmode="numeric" placeholder="0">
         </label>
-        <label class="row-start">자동차
-          <select id="q-car">
-            <option value="none">없음 / 재산 제외 차량(2,000cc 미만 생업용·심한 장애인용 등)</option>
-            <option value="general">2,000cc 미만 & (10년 이상 또는 1,000만원 미만)</option>
-            <option value="full">그 외 자동차</option>
-          </select>
-        </label>
-        <label>자동차 가액
-          <input id="q-carValue" class="money" inputmode="numeric" placeholder="0">
-        </label>
+        <div class="car-row">
+          <span class="car-row-title">자동차 <small>승용 1대 기준 · 없으면 비워 두세요 (승합·화물, 2대 이상은 상세 판정)</small></span>
+          <label>용도
+            <select id="q-carUse">
+              <option value="general">일반</option>
+              <option value="business">생업용</option>
+              <option value="disabled">장애인사용(심한 장애)</option>
+            </select>
+          </label>
+          <label>배기량(cc)
+            <input id="q-carCc" type="number" min="0" inputmode="numeric" placeholder="예: 1600">
+          </label>
+          <label>차령(년)
+            <input id="q-carAge" type="number" min="0" inputmode="numeric" placeholder="예: 8">
+          </label>
+          <label>차량가액
+            <input id="q-carValue" class="money" inputmode="numeric" placeholder="0">
+          </label>
+          <label>승차정원
+            <input id="q-carSeats" type="number" min="1" inputmode="numeric" placeholder="5">
+          </label>
+          <p id="q-carNote" class="car-note" aria-live="polite"></p>
+        </div>
         </div>
       </fieldset>
       <div class="actions">

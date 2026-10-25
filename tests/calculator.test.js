@@ -77,6 +77,13 @@ test('260cc 이하 이륜차 2대는 보유 한도와 별도로 일반재산, 3�
   ]);
   assert.deepStrictEqual([c.general.length, c.full.length], [3, 1]);
 });
+test('일반 승용차 100% 환산 사유에 걸린 조건을 표시', function () {
+  var newCar = cars([{ type: 'passenger', use: 'general', cc: 1600, age: 3, value: 15000000 }]).full[0];
+  assert.ok(newCar.reason.indexOf('차령 10년 미만이면서 차량가액 1,000만원 이상') >= 0);
+  var big = cars([{ type: 'passenger', use: 'general', cc: 2400, age: 12, value: 3000000 }]).full[0];
+  assert.ok(big.reason.indexOf('2,000cc 이상') >= 0);
+  assert.ok(big.reason.indexOf('차령 10년 미만') < 0);
+});
 test('예전 저장 파일의 차종 other(중형 이상 승합·화물)도 계산됨', function () {
   assert.strictEqual(cars([{ type: 'other', use: 'general', value: 5000000 }]).full.length, 1);
 });
