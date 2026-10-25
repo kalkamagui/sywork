@@ -107,6 +107,33 @@ test('양육비만 받아도 15% 이하이면 미반영', function () {
   var r = evaluate({ incomePersons: [], household: { childSupport: 300000 } });
   assert.strictEqual(r.income.privateCounted, 0);
 });
+// 월별 지원: privateMonthly[0] = 기준월, [11] = 11개월 전 (순서는 계산 결과에 영향 없음)
+function months(map) { var a = []; for (var i = 0; i < 12; i++) a.push(map[i] || 0); return a; }
+test('지침 예시1: 후원자 둘이 매월 10만원씩 → 월 20만원은 15% 이하라 미반영', function () {
+  var r = evaluate({ incomePersons: [], household: { privateRegular: 200000 } });
+  assert.strictEqual(r.income.privateCount, 12);
+  assert.strictEqual(r.income.privateCounted, 0);
+});
+test('지침 예시2: 6회(1~2월 40만, 3월 20만, 4~6월 70만) → 4~6월 초과분 210,318원 ÷ 12 = 17,526원', function () {
+  var r = evaluate({ incomePersons: [], household: { privateMonthly: months({ 0: 400000, 1: 400000, 2: 200000, 3: 700000, 4: 700000, 5: 700000 }) } });
+  assert.strictEqual(r.income.privateCount, 6);
+  assert.strictEqual(r.income.privateIsRegular, true);
+  assert.strictEqual(Math.round(r.income.privateExcessYear), 210318);
+  assert.strictEqual(Math.floor(r.income.privateCounted), 17526);
+});
+// 지침 p.102 예시3은 본문에 "A 3회 각 100만원 + B 60만원(총 360만원)"이라 적었지만, 계산식(570,106원×2 + 1,170,106원)은
+// 1~2월 120만원·3월 180만원 기준이다. 결과값(17,556원)이 나오는 계산식 쪽 금액으로 확인한다.
+test('지침 예시3: 4건(1~2월 120만, 3월 180만) → 초과분 2,310,318원 − 중위 50% 2,099,646원 = 210,672원 ÷ 12 = 17,556원', function () {
+  var r = evaluate({ incomePersons: [], household: { privateMonthly: months({ 0: 1200000, 1: 1200000, 2: 1800000 }), privateCount: '4' } });
+  assert.strictEqual(r.income.privateIsRegular, false);
+  assert.strictEqual(Math.round(r.income.privateExcessYear), 2310318);
+  assert.strictEqual(Math.floor(r.income.privateCounted), 17556);
+});
+test('6회 미만이고 합계가 중위 50% 이하이면 미반영', function () {
+  var r = evaluate({ incomePersons: [], household: { privateMonthly: months({ 0: 1500000, 1: 1500000 }) } });
+  assert.strictEqual(r.income.privateCount, 2);
+  assert.strictEqual(r.income.privateCounted, 0);
+});
 
 // ---------- 긴급복지 생계지원·교육지원 구분 (p.176, p.178) ----------
 test('긴급 생계지원은 생활보조금만, 교육지원은 학용품비만 제외', function () {

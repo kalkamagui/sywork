@@ -473,13 +473,27 @@
     var interestYear = num(hh.interestYear);
     var interest = Math.max(0, interestYear - R.interestDeductionYear) / 12;
     var medianForSize = threshold(R.median, Math.min(Math.max(countSize, 2), 6));
-    // 정기지원 사적이전소득: 부모·친척·후원자 지원과 양육비(선지급금 포함)의 "월별 지원금액 총합" 중
-    // 기준 중위소득 15% 이하는 제외하고 초과분만 반영 (p.100~101)
-    var privateRegular = num(hh.privateRegular);
-    var childSupport = num(hh.childSupport);
-    var privateTotal = privateRegular + childSupport;
-    var privateExempt = Math.min(privateTotal, medianForSize ? medianForSize * R.privateTransferExemptRate : 0);
-    var privateCounted = privateTotal - privateExempt;
+    // 정기지원 사적이전소득 (p.100~102)
+    // 최근 1년 달마다 부모·친척·후원자 지원과 양육비(선지급금 포함)를 합쳐 "월별 지원금액 총합"을 구하고,
+    // 기준 중위소득 15%를 넘는 금액만 모아 1/12을 월 소득으로 반영.
+    // 1년 중 6회 미만이면 미반영하되, 그 합이 중위 50%를 넘으면 넘는 금액만 반영
+    var privateRegular = num(hh.privateRegular);   // 매월 받는 정기 지원 (12회로 셈)
+    var childSupport = num(hh.childSupport);       // 매월 받는 양육비·선지급금 (12회로 셈)
+    var privMonthly = [];
+    for (var pm = 0; pm < 12; pm++) privMonthly.push(num((hh.privateMonthly || [])[pm]));
+    var monthsWithIrregular = privMonthly.filter(function (v) { return v > 0; }).length;
+    var autoCount = (privateRegular ? 12 : 0) + (childSupport ? 12 : 0) + monthsWithIrregular;
+    var privateCount = (hh.privateCount !== undefined && hh.privateCount !== null && String(hh.privateCount).trim() !== '') ? num(hh.privateCount) : autoCount;
+    // 기준액은 원 단위 (지침 예시: 2인 15% 629,894원, 50% 2,099,646원)
+    var cap15 = medianForSize ? Math.round(medianForSize * R.privateTransferExemptRate) : 0;
+    var privateExcessYear = privMonthly.reduce(function (s, v) { return s + Math.max(0, privateRegular + childSupport + v - cap15); }, 0);
+    var privateYear = privMonthly.reduce(function (s, v) { return s + privateRegular + childSupport + v; }, 0);
+    var privateIsRegular = privateCount >= R.privateTransferRegularMin;
+    var largeCap = medianForSize ? Math.round(medianForSize * R.privateTransferLargeRate) : 0;
+    var privateCountedYear = privateIsRegular ? privateExcessYear : Math.max(0, privateExcessYear - largeCap);
+    var privateTotal = privateYear / 12;
+    var privateCounted = privateCountedYear / 12;
+    var privateExempt = privateTotal - privateCounted;
     var specialExpense = num(hh.medical) + num(hh.pensionPremium) * 0.75;
     // 대학생 등록금: 근로·사업소득에서 낸 학기 등록금 ÷ 6, 근로·사업소득(공제 후)을 넘지 않음 (p.91)
     var tuitionDeduct = Math.min(num(hh.tuition) / R.tuitionMonths, Math.max(0, totalEarned - totalDeduct));
@@ -612,7 +626,9 @@
       kids: kids,
       supportSize: supportSize, countSize: countSize,
       income: { rows: incomeRows, totalEarned: totalEarned, totalDeduct: totalDeduct, totalOther: totalOther,
-        interest: interest, privateRegular: privateRegular, privateTotal: privateTotal, privateExempt: privateExempt, privateCounted: privateCounted,
+        interest: interest, privateRegular: privateRegular, privateTotal: privateTotal, privateExempt: privateExempt,
+        privateCount: privateCount, privateIsRegular: privateIsRegular, privateExcessYear: privateExcessYear,
+        privateCap15: cap15, privateLargeCap: largeCap, privateIrregularYear: privMonthly.reduce(function (s, v) { return s + v; }, 0), privateCounted: privateCounted,
         childSupport: childSupport, specialExpense: specialExpense, tuitionDeduct: tuitionDeduct,
         homePension: homePension, homePensionCounted: homePensionCounted, actual: actualIncome, eval: incomeEval },
       assets: assets,

@@ -82,7 +82,9 @@ var RULES = {
     finCap: { seoul: 54000000, gyeonggi: 54000000, metro: 54000000, other: 34000000 }
   },
   interestDeductionYear: 240000, // 이자소득 공제 (연)
-  privateTransferExemptRate: 0.15, // 정기 사적이전소득 중 기준중위소득 15% 이하 제외
+  privateTransferExemptRate: 0.15, // 정기 사적이전소득: 월별 지원금액 총합 중 기준중위소득 15% 이하 제외 (p.101)
+  privateTransferRegularMin: 6,    // 최근 1년 중 6회 이상 지원받으면 정기지원
+  privateTransferLargeRate: 0.5,   // 6회 미만이라도 반영 대상 합계가 기준중위소득 50%를 넘으면 넘는 금액 반영
 
   // 자동차 재산가액 산정 제외(p.135) · 일반재산 환산율 4.17% 적용(p.136~138) 요건
   car: {

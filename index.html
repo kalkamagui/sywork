@@ -272,10 +272,10 @@
       <label>이자소득 (연간, 가구 합계)
         <input id="interestYear" class="money" inputmode="numeric" placeholder="0">
       </label>
-      <label>정기 사적이전소득 (부모·친척 등 정기 지원, 월)
+      <label>매월 받는 정기 지원 (부모·친척·후원자 등, 월)
         <input id="privateRegular" class="money" inputmode="numeric" placeholder="0">
       </label>
-      <label>양육비·양육비 선지급금 수령액 (월)
+      <label>매월 받는 양육비·양육비 선지급금 (월)
         <input id="childSupport" class="money" inputmode="numeric" placeholder="0">
       </label>
       <label>만성질환 의료비 (직전 3개월 월평균)
@@ -289,6 +289,26 @@
       </label>
       <label>주택연금·농지연금 수령액 (월)
         <input id="homePension" class="money" inputmode="numeric" placeholder="0">
+      </label>
+    </div>
+
+    <h3>최근 1년 비정기 사적이전소득 (달마다 받은 금액)</h3>
+    <p class="hint">매월 일정하게 받지 않은 부모·친척·후원자 지원을 받은 달에 적습니다. 위의 "매월 받는" 금액과 합쳐 달마다 기준중위소득 15%를 넘는 금액만 반영합니다. 1년 중 6회 미만이면 반영하지 않되, 반영 대상 합계가 기준중위소득 50%를 넘으면 넘는 금액은 반영합니다(p.101). 임대보증금 마련·수술비 등 사용처가 확인된 일시 지원은 적지 않습니다.</p>
+    <div class="form-grid" id="private-months">
+      <label><span class="pm-label" data-i="11"></span><input id="priv_m11" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="10"></span><input id="priv_m10" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="9"></span><input id="priv_m9" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="8"></span><input id="priv_m8" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="7"></span><input id="priv_m7" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="6"></span><input id="priv_m6" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="5"></span><input id="priv_m5" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="4"></span><input id="priv_m4" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="3"></span><input id="priv_m3" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="2"></span><input id="priv_m2" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="1"></span><input id="priv_m1" class="money" inputmode="numeric" placeholder="0"></label>
+      <label><span class="pm-label" data-i="0"></span><input id="priv_m0" class="money" inputmode="numeric" placeholder="0"></label>
+      <label>최근 1년 지원받은 횟수 (건, 비우면 자동: 매월 받는 금액 12회 + 금액 적은 달마다 1회)
+        <input id="privateCount" type="number" min="0" placeholder="자동">
       </label>
     </div>
   </div>

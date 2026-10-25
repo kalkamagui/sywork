@@ -218,10 +218,23 @@
     var youth = !grand && $('apBirth').value && Calc.underAge($('apBirth').value, base, RULES.age.youthParent);
     document.querySelectorAll('.only-youth').forEach(function (el) { el.style.display = youth ? '' : 'none'; });
     if ($('reason').value === 'unmarried') $('unmarried').checked = true;
+    updatePrivateMonthLabels();
   }
   ['familyType', 'reason', 'apBirth', 'baseMonth'].forEach(function (id) {
     $(id).addEventListener('change', function () { updateVisibility(); buildIncomeTable(); });
   });
+
+  // 비정기 사적이전소득 칸 이름: 기준월에서 거슬러 12개월 (priv_m0 = 기준월)
+  function updatePrivateMonthLabels() {
+    var bm = $('baseMonth').value || todayMonth();
+    var idx = +bm.slice(0, 4) * 12 + (+bm.slice(5, 7) - 1);
+    document.querySelectorAll('#private-months .pm-label').forEach(function (el) {
+      var k = idx - (+el.dataset.i);
+      el.textContent = Math.floor(k / 12) + '년 ' + (k % 12 + 1) + '월' + (el.dataset.i === '0' ? ' (기준월)' : '');
+    });
+  }
+  $('baseMonth').addEventListener('change', updatePrivateMonthLabels);
+  $('baseMonth').addEventListener('input', updatePrivateMonthLabels);
   $('apName').addEventListener('change', buildIncomeTable);
 
   $('add-kid').addEventListener('click', function () { addKid(); });
@@ -264,7 +277,9 @@
       incomePersons: persons,
       household: {
         interestYear: val('interestYear'), privateRegular: val('privateRegular'), childSupport: val('childSupport'),
-        medical: val('medical'), pensionPremium: val('pensionPremium'), tuition: val('tuition'), homePension: val('homePension')
+        medical: val('medical'), pensionPremium: val('pensionPremium'), tuition: val('tuition'), homePension: val('homePension'),
+        privateMonthly: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (i) { return val('priv_m' + i); }),
+        privateCount: $('privateCount').value
       },
       assets: {
         housePrice: val('housePrice'), houseLiving: checked('houseLiving'), otherBuilding: val('otherBuilding'), land: val('land'),
@@ -339,10 +354,15 @@
         return '<tr><td>' + esc(x.name) + '</td><td>' + won(x.earned) + '</td><td>' + won(x.deduction.amount) + '</td><td style="text-align:left">' + esc(x.deduction.label) + '</td><td>' + won(x.other) + '</td></tr>';
       }).join('') + '</tbody></table></div><ul class="notes">' +
       (inc.interest ? '<li>이자소득: (연 이자 − 24만원) ÷ 12 = ' + won(inc.interest) + '</li>' : '') +
-      (inc.privateTotal ? '<li>정기 사적이전소득 (' +
-        [inc.privateRegular ? '정기 지원 ' + won(inc.privateRegular) : '', inc.childSupport ? '양육비·선지급금 ' + won(inc.childSupport) : ''].filter(Boolean).join(' + ') +
-        ') − 기준중위소득 15% 제외(' + won(inc.privateExempt) + ') = 반영 ' + won(inc.privateCounted) +
-        ' — 1년 중 6회 이상 받은 정기 지원 기준. 6회 미만은 원칙적으로 미반영이나 합계가 중위 50%를 넘으면 반영(조사 시 확인)</li>' : '') +
+      (inc.privateTotal ? '<li>사적이전소득 (' +
+        [inc.privateRegular ? '매월 정기 지원 ' + won(inc.privateRegular) : '', inc.childSupport ? '매월 양육비·선지급금 ' + won(inc.childSupport) : '',
+         inc.privateIrregularYear ? '비정기 지원 1년 합계 ' + won(inc.privateIrregularYear) : ''].filter(Boolean).join(' + ') +
+        '): 최근 1년 ' + inc.privateCount + '회 → ' + (inc.privateIsRegular ? '정기지원(6회 이상)' : '6회 미만') +
+        '. 달마다 기준중위소득 15%(' + won(inc.privateCap15) + ') 초과분 1년 합계 ' + won(inc.privateExcessYear) +
+        (inc.privateIsRegular ? '' : (inc.privateExcessYear > inc.privateLargeCap
+          ? ' − 중위 50%(' + won(inc.privateLargeCap) + ') = ' + won(inc.privateExcessYear - inc.privateLargeCap) + '만 반영'
+          : ' → 중위 50%(' + won(inc.privateLargeCap) + ') 이하')) +
+        (inc.privateCounted ? ' ÷ 12 = 월 ' + won(inc.privateCounted) + ' 반영' : ' → 반영 안 함') + ' (p.101~102)</li>' : '') +
       (inc.specialExpense ? '<li>가구특성 지출(의료비 + 국민연금 보험료 75%) ' + won(inc.specialExpense) + ' 차감</li>' : '') +
       (inc.tuitionDeduct ? '<li>대학생 등록금 지출 공제: 등록금 ÷ 6 = ' + won(inc.tuitionDeduct) + ' 차감 (근로·사업소득 범위 내, p.91)</li>' : '') +
       (inc.homePension ? '<li>주택·농지연금 ' + won(inc.homePension) + ' 중 50% 공제 → ' + won(inc.homePensionCounted) + ' 반영 (p.100)</li>' : '') +
