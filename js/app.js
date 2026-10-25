@@ -640,6 +640,47 @@
   $('tab-phone').addEventListener('input', updateCarNote);
   $('tab-phone').addEventListener('change', updateCarNote);
 
+  // 보험개발원 차량기준가액 팝업: 공식 페이지는 새 창에서 상담자가 직접 조회하고, 확인한 가액만 받아 차량가액 칸에 넣음
+  // (보험개발원 조회 한도는 공인 IP 기준 일 5·월 10·연 20회. 이 브라우저에서 넣은 횟수만 참고로 셈)
+  var KIDI_KEY = 'hanbumo-kidi-uses';
+  function kidiUses() {
+    try { return JSON.parse(localStorage.getItem(KIDI_KEY)) || []; } catch (e) { return []; }
+  }
+  function localDay() { return todayMonth() + '-' + String(new Date().getDate()).padStart(2, '0'); }
+  function renderKidiLocal() {
+    var today = localDay(), month = today.slice(0, 7), year = today.slice(0, 4);
+    var uses = kidiUses();
+    function count(prefix) { return uses.filter(function (u) { return u.indexOf(prefix) === 0; }).length; }
+    $('kidi-local').textContent = '이 브라우저에서 가액을 넣은 횟수(참고): 오늘 ' + count(today) + '회 · 이번 달 ' + count(month) + '회 · 올해 ' + count(year) + '회';
+  }
+  var kidiDialog = $('kidi-dialog');
+  $('q-kidi').addEventListener('click', function () {
+    $('kidi-value').value = $('q-carValue').value;
+    renderKidiLocal();
+    kidiDialog.returnValue = '';
+    kidiDialog.showModal();
+    $('kidi-value').focus();
+  });
+  kidiDialog.querySelectorAll('[data-kidi-close]').forEach(function (b) {
+    b.addEventListener('click', function () { kidiDialog.close(); });
+  });
+  kidiDialog.querySelector('form').addEventListener('submit', function (e) {
+    if (!num($('kidi-value').value)) { e.preventDefault(); $('kidi-value').focus(); }
+  });
+  kidiDialog.addEventListener('close', function () {
+    if (kidiDialog.returnValue !== 'apply') return;
+    var v = num($('kidi-value').value);
+    var input = $('q-carValue');
+    input.value = fmtMan(v);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    try {
+      var uses = kidiUses();
+      uses.push(localDay());
+      localStorage.setItem(KIDI_KEY, JSON.stringify(uses.slice(-400)));
+    } catch (e) {}
+    toast('차량가액 ' + fmtMan(v) + '만원을 넣었습니다. 배기량·차령도 확인하세요.');
+  });
+
   // 30초 사전 확인: 소득인정액 산출 근거
   function quickBasisHtml(r) {
     var inc = r.income, as = r.assets, C = RULES.conversion;

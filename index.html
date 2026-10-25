@@ -117,7 +117,8 @@
           <input id="q-debt" class="money" inputmode="numeric" placeholder="0">
         </label>
         <div class="car-row">
-          <span class="car-row-title">자동차 <small>승용 1대 기준 · 없으면 비워 두세요 (승합·화물, 2대 이상은 상세 판정)</small></span>
+          <span class="car-row-title">자동차 <small>승용 1대 기준 · 없으면 비워 두세요 (승합·화물, 2대 이상은 상세 판정)</small>
+            <button type="button" id="q-kidi" class="kidi-btn">보험개발원 가액 조회</button></span>
           <label>용도
             <select id="q-carUse">
               <option value="general">일반</option>
@@ -484,6 +485,49 @@
 <!-- 상담 내용 파일 불러오기용 (화면에는 보이지 않음) -->
 <input type="file" id="state-file" accept=".json,application/json" hidden>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- 보험개발원 차량기준가액: 공식 페이지를 새 창으로 열고, 상담자가 확인한 가액을 30초 사전 확인 차량가액 칸에 넣음 -->
+<dialog id="kidi-dialog" class="kidi-dialog" aria-labelledby="kidi-title">
+  <form method="dialog" class="kidi-body">
+    <div class="kidi-head">
+      <h2 id="kidi-title">보험개발원 차량기준가액 조회</h2>
+      <button type="button" class="sb-close" data-kidi-close aria-label="닫기">✕</button>
+    </div>
+
+    <section class="kidi-limit">
+      <h3>조회 한도</h3>
+      <ul class="kidi-quota">
+        <li><span>일일</span><b>5회</b></li>
+        <li><span>월간</span><b>10회</b></li>
+        <li><span>연간</span><b>20회</b></li>
+      </ul>
+      <p class="help">접속한 <b>공인 IP 기준</b>입니다. 같은 사무실에서 같은 IP를 쓰면 한도를 함께 씁니다. 실제 남은 횟수는 보험개발원 페이지 상단의 "일일 조회수"에서 확인하세요.</p>
+      <p class="help" id="kidi-local"></p>
+    </section>
+
+    <section>
+      <h3>조회 순서</h3>
+      <ol class="kidi-steps">
+        <li>아래 버튼으로 보험개발원 페이지를 새 창으로 엽니다.</li>
+        <li>제작사 → 차종(자가용 승용차 등) → 차명대분류 → 차량 연식 → 차명소분류 → 세부 분류를 고르고 [검색]을 누릅니다.</li>
+        <li>나온 차량기준가액을 아래 칸에 <b>만원 단위</b>로 입력하고 [차량가액에 넣기]를 누릅니다.</li>
+      </ol>
+      <p class="help">차량 연식은 자동차등록증의 최초 등록년도입니다. 현재 가액을 볼 때는 "기준년월"을 바꾸지 않습니다.</p>
+      <a class="btn kidi-open" href="https://www.kidi.or.kr/user/car/carprice.do" target="_blank" rel="noopener noreferrer">보험개발원 조회 페이지 열기 ↗</a>
+    </section>
+
+    <label class="kidi-input">조회한 차량기준가액
+      <input id="kidi-value" class="money" inputmode="decimal" placeholder="예: 1,250">
+    </label>
+
+    <p class="kidi-notice">보험개발원은 차량기준가액표를 자동차보험 계약 목적 외에 쓰는 것을 제한하고, 이용하려면 허락을 받도록 안내합니다. 기관 방침을 확인하고 쓰세요. 실제 선정 조사에서는 사회보장정보시스템의 차량가액을 적용합니다(지침 p.141).</p>
+
+    <div class="kidi-actions">
+      <button type="button" class="btn" data-kidi-close>닫기</button>
+      <button class="btn primary" id="kidi-apply" value="apply">차량가액에 넣기</button>
+    </div>
+  </form>
+</dialog>
 
 <script src="js/rules2026.js"></script>
 <script src="js/calculator.js"></script>
