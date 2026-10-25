@@ -239,6 +239,58 @@
       .then(function () { st.loading = false; });
   }
 
+  // ---------- 프린트 · PDF 저장 ----------
+  function fileName(id) {
+    var d = new Date();
+    var ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+    return ($(id + '-title').textContent || PAGES[id].title).replace(/[\\/:*?"<>|\s]+/g, '_') + '_' + ymd + '.pdf';
+  }
+  function printPage(id) {
+    if (!(state[id] && state[id].loaded)) { alert('내용을 불러온 뒤 프린트할 수 있습니다.'); return; }
+    window.print(); // 인쇄용 CSS가 현재 열린 패널만 출력
+  }
+
+  // PDF는 html2pdf.js(cdnjs)를 처음 누를 때만 내려받아 만듦. 실패하면 인쇄 대화상자(PDF로 저장)로 대체
+  var PDF_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+  var pdfLibPromise = null;
+  function loadPdfLib() {
+    if (root.html2pdf) return Promise.resolve(root.html2pdf);
+    if (pdfLibPromise) return pdfLibPromise;
+    pdfLibPromise = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = PDF_LIB;
+      s.onload = function () { root.html2pdf ? resolve(root.html2pdf) : reject(new Error('PDF 도구를 불러오지 못했습니다.')); };
+      s.onerror = function () { pdfLibPromise = null; reject(new Error('PDF 도구를 내려받지 못했습니다.')); };
+      document.head.appendChild(s);
+    });
+    return pdfLibPromise;
+  }
+  function savePdf(id, btn) {
+    if (!(state[id] && state[id].loaded)) { alert('내용을 불러온 뒤 PDF로 저장할 수 있습니다.'); return; }
+    var label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'PDF 만드는 중…';
+    var el = document.querySelector('#tab-' + id + ' .care-page');
+    document.body.classList.add('pdf-export');
+    loadPdfLib()
+      .then(function (html2pdf) {
+        return html2pdf().set({
+          margin: [10, 10, 12, 10],
+          filename: fileName(id),
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', 'h3', 'h4', '.care-steps li', '.care-box', '.care-notes'] }
+        }).from(el).save();
+      })
+      .catch(function (err) {
+        if (confirm(err.message + '\n인쇄 화면에서 "PDF로 저장"을 선택해 저장할까요?')) window.print();
+      })
+      .then(function () {
+        document.body.classList.remove('pdf-export');
+        btn.disabled = false; btn.textContent = label;
+      });
+  }
+
   // 페이지마다 패널을 만들어 #ref-panels 에 넣음
   function buildPanels() {
     var box = $('ref-panels');
@@ -252,12 +304,17 @@
         '<div class="care-page">' +
         '<div class="page-head"><div><h2 id="' + id + '-title">' + esc(p.title) + '</h2>' +
         '<p id="' + id + '-status" class="care-status" aria-live="polite"></p></div>' +
-        '<div class="actions top-actions"><button class="btn" type="button" data-reload="' + id + '">다시 불러오기</button>' +
+        '<div class="actions top-actions no-print" data-html2canvas-ignore="true">' +
+        '<button class="btn" type="button" data-pdf="' + id + '">PDF 저장하기</button>' +
+        '<button class="btn" type="button" data-print="' + id + '">프린트</button>' +
+        '<button class="btn" type="button" data-reload="' + id + '">다시 불러오기</button>' +
         '<a class="btn" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer">원문 보기 ↗</a></div></div>' +
         '<div id="' + id + '-content"></div>' +
         '<p class="hint care-source">출처: 성평등가족부 누리집 「' + esc(p.title) + '」 (공공누리 제1유형·출처표시). 내용은 열 때마다 원문에서 새로 불러옵니다.</p>' +
         '</div>';
       sec.querySelector('[data-reload]').addEventListener('click', function () { load(id, true); });
+      sec.querySelector('[data-print]').addEventListener('click', function () { printPage(id); });
+      sec.querySelector('[data-pdf]').addEventListener('click', function (e) { savePdf(id, e.currentTarget); });
       box.appendChild(sec);
     });
   }

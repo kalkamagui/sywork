@@ -228,8 +228,9 @@ mark { background: #fef08a; color: inherit; border-radius: 2px; }
 }
 
 @media print {
-  .top, .foot, .no-print, .panel:not(#tab-guide) { display: none !important; }
-  #tab-guide { display: block !important; padding: 0; }
+  /* 현재 열려 있는 화면(신청 안내·참고 자료 등)만 인쇄 */
+  .top, .foot, .no-print, .panel:not(.active) { display: none !important; }
+  .panel.active { display: block !important; padding: 0; }
   body { font-size: 12px; }
 }
 
@@ -545,3 +546,26 @@ fieldset.subgroup .form-grid > .row-start { grid-column-start: 1; }
 .care-card h3 span { min-width: 0; }
 .care-go { margin-left: 6px; font-size: 13px; font-weight: 500; color: var(--accent); }
 .side .tab span, .side .key-btn span { white-space: normal; line-height: 1.35; padding: 6px 0; }
+
+/* ---------- 참고 자료 페이지: 프린트 · PDF ---------- */
+@media print {
+  @page { size: A4; margin: 12mm 10mm; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; }
+  .side, .sidebar, .sb-backdrop { display: none !important; }
+  .app { display: block; }
+  .app-main > .wrap { max-width: none !important; padding: 0 !important; }
+  .care-page { max-width: none; }
+  .care-page .page-head { margin-bottom: 12px; }
+  .care-grid { display: block; }
+  .care-card { box-shadow: none; margin-bottom: 10px; padding: 14px 16px; border-color: #d5dce6; }
+  .care-card h3 { break-after: avoid; }
+  .care-table tr, .care-fee tr, .care-steps li, .care-box, .care-notes { break-inside: avoid; }
+  .care-table thead, .care-fee thead { display: table-header-group; }
+  .table-scroll { overflow: visible; }
+  .care-spin { display: none; }
+}
+/* PDF 만드는 동안: A4 폭에 맞춰 한 단으로 배치 */
+body.pdf-export #ref-panels .panel.active .care-page { width: 760px; max-width: 760px; background: #fff; padding: 4px; }
+body.pdf-export .care-grid { display: block; }
+body.pdf-export .care-card { box-shadow: none; margin-bottom: 10px; }
+body.pdf-export .care-spin { display: none; }
