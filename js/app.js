@@ -170,7 +170,7 @@
 
   // 소득표: 신고서처럼 가구원별 열
   var INCOME_ROWS = [
-    ['g', '근로소득'], ['regular', '상시근로'], ['daily', '일용근로'],
+    ['g', '근로소득'], ['regular', '상시근로'], ['daily', '일용근로', '최근 3개월 평균(확인조사 시 6개월 평균)'],
     ['g', '사업소득'], ['farm', '농업소득'], ['forest', '임업소득'], ['fish', '어업소득'], ['business', '그 밖의 사업소득(자영업)'],
     ['g', '재산소득·이전소득'], ['rent', '임대소득'], ['pension', '연금소득(사적연금)'],
     ['publicTransfer', '공적이전소득(국민연금·실업·육아휴직급여 등)'], ['otherIncome', '그 밖의 소득(지자체 지원금 등)']
@@ -201,7 +201,7 @@
     var html = '<thead><tr><th>항목 \\ 가구원</th>' + persons.map(function (p) { return '<th>' + esc(p.name) + '</th>'; }).join('') + '</tr></thead><tbody>';
     INCOME_ROWS.forEach(function (r) {
       if (r[0] === 'g') { html += '<tr class="group"><td colspan="' + (persons.length + 1) + '">' + r[1] + '</td></tr>'; return; }
-      html += '<tr><th>' + r[1] + '</th>' + persons.map(function (p) {
+      html += '<tr><th>' + r[1] + (r[2] ? '<small class="help">' + r[2] + '</small>' : '') + '</th>' + persons.map(function (p) {
         var v = (incomeStore[p.key] || {})[r[0]] || '';
         return '<td><input class="money" inputmode="numeric" data-p="' + p.key + '" data-f="' + r[0] + '" value="' + esc(v) + '" placeholder="0"></td>';
       }).join('') + '</tr>';

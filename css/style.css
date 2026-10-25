@@ -899,3 +899,6 @@ input.has-value, fieldset.subgroup input.has-value, .edit-table input.has-value 
   #tab-judge #kids-table td:nth-child(-n+4), #tab-judge #kids-table td.c,
   #tab-judge #cars-table td:nth-child(-n+7) { grid-column: 1 / -1; }
 }
+
+/* 소득표 행 제목 아래 도움말: 줄바꿈해서 표 폭이 늘어나지 않게 */
+.money-table tbody th .help { display: block; max-width: 220px; margin-top: 2px; white-space: normal; font-weight: 400; }
