@@ -12,7 +12,6 @@
     youth: { title: '청소년 한부모 아동양육 및 자립지원', url: ORIGIN + '/sp/fam/sp_fam_f007.do' },
     care: { title: '아이돌봄지원사업', url: ORIGIN + '/sp/fam/sp_fam_f005.do' }
   };
-  var HIGHLIGHT = /(한부모|조손|청소년\s?부모)/g;
   var state = {};
 
   function $(id) { return document.getElementById(id); }
@@ -22,10 +21,6 @@
     });
   }
   function clean(t) { return String(t || '').replace(/\s+/g, ' ').trim(); }
-  function mark(html) {
-    // 태그 밖의 글자에만 강조 표시
-    return html.replace(/(^|>)([^<]+)/g, function (m, a, text) { return a + text.replace(HIGHLIGHT, '<mark>$1</mark>'); });
-  }
   function absUrl(href) {
     if (/^https?:\/\//i.test(href)) return href;
     if (/^\//.test(href)) return ORIGIN + href;
@@ -176,8 +171,8 @@
     var cards = data.sections.map(function (s) {
       var body = '';
       s.parts.forEach(function (p) {
-        if (p.fee) body += feeTableHtml(s.fee) + (p.notes ? '<div class="care-notes">' + mark(p.notes) + '</div>' : '');
-        else body += '<div class="care-body">' + mark(p.html) + '</div>';
+        if (p.fee) body += feeTableHtml(s.fee) + (p.notes ? '<div class="care-notes">' + p.notes + '</div>' : '');
+        else body += '<div class="care-body">' + p.html + '</div>';
       });
       // 짧은 항목(필요서류·문의 등)은 반 폭, 나머지는 전체 폭
       var short = !s.fee && !/목적|개요/.test(s.name) && body.replace(/<[^>]+>/g, '').length < 160 && !/<(table|ol)/.test(body);

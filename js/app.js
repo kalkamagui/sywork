@@ -298,19 +298,8 @@
   function renderResult(r, input) {
     var el = $('result');
     var ratio = r.line65 ? Math.min(100, r.recognized / r.line65 * 100) : 0;
-    var html = verdictHtml(r);
-    if (r.line65) {
-      html += '<div class="meter-row"><span>소득인정액</span><b>' + won(r.recognized) + '</b></div>' +
-        '<div class="meter' + (r.recognized > r.line65 ? ' over' : '') + '"><span style="width:' + ratio.toFixed(1) + '%"></span></div>' +
-        '<div class="meter-foot"><span>기준 대비 ' + (r.recognized / r.line65 * 100).toFixed(0) + '%</span><span>' + r.countSize + '인 기준 ' + won(r.line65) + '</span></div>';
-    }
-
-    if (r.benefits.length) {
-      html += '<h4>받을 수 있는 급여</h4><ul class="benefit-list">' + r.benefits.map(function (b) {
-        return '<li class="' + (b.amount ? '' : 'zero') + '"><div>' + esc(b.name) + '<small>' + esc(b.detail) + '</small></div>' +
-          '<div class="amt">' + (b.amount ? (b.unit + ' ' + won(b.amount)) : '해당 없음') + '</div></li>';
-      }).join('') + '</ul>';
-    }
+    var html = heroHtml(r, '<button class="btn hero-btn" id="to-guide" type="button">신청 안내 보기 →</button>');
+    html += '<div class="res-card">' + flowHtml(r) + benefitRowsHtml(r);
 
     html += '<div class="stats">' +
       stat('가구 유형', esc(r.typeLabel) + (r.applicantAge != null ? ' · 만 ' + r.applicantAge + '세' : '')) +
@@ -319,7 +308,6 @@
       stat('재산 소득환산액', won(r.assets.total)) +
       (r.youth && r.line72 ? stat('증명서 기준 72%', won(r.line72)) : '') +
       '</div>';
-    html += '<button class="btn block" id="to-guide">신청 안내 보기 →</button>';
 
     html += '<h4>자녀별 판정</h4><div class="table-scroll"><table class="data-table"><thead><tr><th>자녀</th><th>나이</th><th>학적</th><th>지원 가구원</th><th>산정 가구원</th><th>아동양육비</th><th>비고</th></tr></thead><tbody>' +
       r.kids.map(function (k) {
@@ -354,13 +342,88 @@
       (r.assets.net.car100 ? '<li>100% 환산 자동차 ' + won(r.assets.net.car100) + ' × 100% = ' + won(r.assets.conv.car100) + '</li>' : '') +
       '<li><b>재산 소득환산액 = ' + won(r.assets.total) + '</b></li></ul>' +
       '<h5>③ 소득인정액 = ' + won(inc.eval) + ' + ' + won(r.assets.total) + ' = ' + won(r.recognized) + '</h5></details>' +
-      '<p class="disclaimer">모의계산입니다. 최종 결정은 사회보장정보시스템 공적자료 조회·조사 결과에 따릅니다. 기준월 ' + r.base.y + '년 ' + r.base.m + '월</p>';
+      '<p class="disclaimer">모의계산입니다. 최종 결정은 사회보장정보시스템 공적자료 조회·조사 결과에 따릅니다. 기준월 ' + r.base.y + '년 ' + r.base.m + '월</p></div>';
 
     el.innerHTML = html;
+    renderKpis(r);
     el.scrollTop = 0;
     $('to-guide').addEventListener('click', function () { showTab('guide'); });
     if (getComputedStyle(el).position !== 'sticky') el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+  // ---------- 핀테크 스타일 결과 조각 ----------
+  function ringSvg(pct, over) {
+    var C = 326.7, dash = Math.max(0, Math.min(pct, 100)) / 100 * C;
+    return '<svg class="ring" role="img" aria-label="소득인정액이 선정기준의 ' + pct.toFixed(0) + '%" width="112" height="112" viewBox="0 0 120 120">' +
+      '<circle cx="60" cy="60" r="52" fill="none" stroke="#1e293b" stroke-width="12"></circle>' +
+      '<circle cx="60" cy="60" r="52" fill="none" stroke="' + (over ? '#fb7185' : '#a5b4fc') + '" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + dash.toFixed(1) + ' ' + C + '" transform="rotate(-90 60 60)"></circle>' +
+      '<text x="60" y="60" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="800">' + pct.toFixed(0) + '%</text>' +
+      '<text x="60" y="80" text-anchor="middle" fill="#94a3b8" font-size="11">기준 대비</text></svg>';
+  }
+  function heroHtml(r, extra) {
+    var badge = !r.eligibleBasic ? ['bad', '가구 요건 미충족'] : r.eligible ? ['ok', '지원대상 가능 · ' + r.typeLabel]
+      : r.certOnly ? ['warn', '증명서만 발급 가능'] : r.line65 == null ? ['warn', '담당자 확인 필요'] : ['bad', '기준 초과'];
+    var h = '<div class="hero"><div class="hero-top"><span class="hero-label">예상 월 급여</span><span class="hero-badge ' + badge[0] + '">' + esc(badge[1]) + '</span></div>';
+    if (r.eligible) {
+      h += '<div class="hero-num">' + Math.round(r.monthly).toLocaleString('ko-KR') + '<span>원</span></div>';
+    } else {
+      h += '<div class="hero-num muted">0<span>원</span></div>' +
+        '<p class="hero-msg">' + esc(!r.eligibleBasic ? '한부모가족 요건을 먼저 확인해야 합니다.' : r.certOnly ? '복지급여 기준(65%)은 넘지만 한부모가족증명서(72%)는 발급됩니다.' : '소득인정액이 선정기준을 넘습니다.' + (r.pass100 ? ' 복지시설 입소 상담은 가능합니다.' : '')) + '</p>';
+    }
+    if (r.line65) {
+      var pct = r.recognized / r.line65 * 100, over = r.recognized > r.line65;
+      h += '<div class="hero-gauge">' + ringSvg(pct, over) + '<div class="hero-rows">' +
+        '<div><span>소득인정액</span><b>' + Math.round(r.recognized).toLocaleString('ko-KR') + '</b></div>' +
+        '<div><span>' + r.countSize + '인 기준 65%</span><b>' + r.line65.toLocaleString('ko-KR') + '</b></div>' +
+        '<div><span>' + (over ? '초과' : '여유') + '</span><b class="' + (over ? 'neg' : 'pos') + '">' + (over ? '+' : '+') + Math.round(Math.abs(r.line65 - r.recognized)).toLocaleString('ko-KR') + '</b></div>' +
+        '</div></div>';
+    }
+    if (r.eligible && (r.yearlyExtra || r.annualTotal)) {
+      h += '<div class="hero-chips"><div><span>연간 합계</span><b>' + man(r.annualTotal) + '</b></div>' +
+        (r.yearlyExtra ? '<div><span>학용품비 (7월)</span><b>' + man(r.yearlyExtra) + '</b></div>' : '<div><span>지원 가구원</span><b>' + r.supportSize + '인</b></div>') + '</div>';
+    }
+    if (!r.eligibleBasic && r.reasons.length) h += '<ul class="hero-reasons">' + r.reasons.map(li).join('') + '</ul>';
+    return h + (extra || '') + '</div>';
+  }
+  function benefitIcon(name) {
+    var m = [[/추가/, '추', 'mint'], [/학용품|교육지원/, '학', 'amber'], [/생활보조/, '생', 'slate'], [/자립/, '자', 'mint'], [/검정|학습/, '검', 'amber'], [/양육비/, '양', 'indigo']];
+    for (var i = 0; i < m.length; i++) if (m[i][0].test(name)) return '<span class="b-ico ' + m[i][2] + '" aria-hidden="true">' + m[i][1] + '</span>';
+    return '<span class="b-ico slate" aria-hidden="true">·</span>';
+  }
+  function benefitRowsHtml(r) {
+    if (!r.benefits.length) return '';
+    return '<h4>급여 구성</h4><ul class="b-rows">' + r.benefits.map(function (b) {
+      return '<li class="' + (b.amount ? '' : 'zero') + '">' + benefitIcon(b.name) +
+        '<span class="b-txt"><b>' + esc(b.name) + '</b><small>' + esc(b.detail) + '</small></span>' +
+        '<span class="b-amt">' + (b.amount ? (b.unit === '월' ? '' : b.unit + ' ') + Math.round(b.amount).toLocaleString('ko-KR') : '해당 없음') + '</span></li>';
+    }).join('') + '</ul>';
+  }
+  function flowHtml(r) {
+    if (!r.line65) return '';
+    var inc = r.income, E = inc.totalEarned, D = inc.totalDeduct, O = Math.max(0, inc.eval - (E - D)), A = r.assets.total, R = r.recognized, L = r.line65;
+    var max = Math.max(E + O + A, R, L, 1);
+    function m(v) { return (v / 10000).toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+    function row(label, v, cls, sign, offset) {
+      return '<div class="f-row"><span>' + label + '</span><div class="f-bar"><i class="' + cls + '" style="margin-left:' + ((offset || 0) / max * 100).toFixed(1) + '%;width:' + (v / max * 100).toFixed(1) + '%"></i></div><b class="' + cls + '">' + sign + m(v) + '</b></div>';
+    }
+    return '<h4>소득인정액 산출 흐름 <small>만원 / 월</small></h4><div class="flow">' +
+      (E ? row('근로·사업소득', E, 'base', '', 0) + row('근로소득공제', D, 'minus', '−', E - D) : '') +
+      (O ? row('그 밖의 소득', O, 'base', '+', 0) : '') +
+      (A ? row('재산 소득환산액', A, 'plus', '+', Math.max(0, R - A)) : '') +
+      '<div class="f-row total"><span>소득인정액</span><div class="f-bar"><i class="sum' + (R > L ? ' over' : '') + '" style="width:' + (R / max * 100).toFixed(1) + '%"></i><em style="left:' + (L / max * 100).toFixed(1) + '%" title="선정기준"></em></div><b class="sum">' + m(R) + '</b></div>' +
+      '<p class="f-note">세로선 = ' + r.countSize + '인 선정기준 ' + m(L) + '만원' + (inc.rows[0] && inc.rows[0].deduction ? ' · ' + esc(inc.rows[0].deduction.label) : '') + '</p></div>';
+  }
+  function renderKpis(r) {
+    var box = $('judge-kpis');
+    if (!box) return;
+    var inc = r.income, over = r.line65 && r.recognized > r.line65;
+    box.innerHTML =
+      kpi('소득평가액', won(inc.eval), inc.totalEarned ? '근로 ' + man(inc.totalEarned) + ' − 공제 ' + man(inc.totalDeduct) : '근로·사업소득 없음') +
+      kpi('재산 소득환산액', won(r.assets.total), '주거 ' + man(r.assets.conv.housing) + ' · 일반 ' + man(r.assets.conv.general) + ' · 금융 ' + man(r.assets.conv.financial)) +
+      kpi('소득인정액', '<span class="accent">' + won(r.recognized) + '</span>', '월 기준') +
+      kpi(r.countSize + '인 선정기준 (65%)', r.line65 ? won(r.line65) : '표 밖', r.line65 ? '<span class="' + (over ? 'neg' : 'pos') + '">' + (over ? '초과 ' : '여유 +') + won(Math.abs(r.line65 - r.recognized)) + '</span>' : '담당자 확인');
+    box.hidden = false;
+  }
+  function kpi(k, v, sub) { return '<div class="kpi"><span class="k">' + k + '</span><span class="v">' + v + '</span><span class="s">' + sub + '</span></div>'; }
   function tile(k, v) { return '<div class="tile"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
   function stat(k, v) { return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
   function li(x) { return '<li>' + esc(x) + '</li>'; }
@@ -384,6 +447,7 @@
     $('cars-table').querySelector('tbody').innerHTML = '';
     incomeStore = {}; kidSeq = 0; carSeq = 0;
     $('result').innerHTML = RESULT_EMPTY;
+    if ($('judge-kpis')) { $('judge-kpis').hidden = true; $('judge-kpis').innerHTML = ''; }
     lastResult = null; lastInput = null;
     addKid();
     updateVisibility();
@@ -522,16 +586,8 @@
   }
   $('q-run').addEventListener('click', function () {
     var r = Calc.evaluate(quickInput());
-    var cls = r.eligible ? 'ok' : (r.certOnly ? 'warn' : 'bad');
-    var title = !r.eligibleBasic ? '가구 요건 확인 필요'
-      : r.eligible ? '대상 가능성 높음 · ' + r.typeLabel
-      : r.certOnly ? '증명서만 가능(청소년한부모 72%)' : '기준 초과 가능성';
-    var html = '<div class="box"><span class="badge ' + cls + '">' + esc(title) + '</span>';
-    if (r.eligible) html += '<div class="big-num" style="margin-top:10px">월 ' + won(r.monthly) + '</div>' + (r.yearlyExtra ? '<p class="hint" style="margin:0">+ 학용품비 연 ' + won(r.yearlyExtra) + '</p>' : '');
-    html += '<p class="hint" style="margin:6px 0 0">소득인정액 약 ' + won(r.recognized) + (r.line65 ? ' / ' + r.countSize + '인 기준 ' + won(r.line65) : '') + '</p>';
-    if (!r.eligibleBasic) html += '<ul class="notes">' + r.reasons.map(li).join('') + '</ul>';
-    html += '</div>' + quickBasisHtml(r) +
-      '<p class="hint" style="margin-top:10px">근로소득은 신청인 나이 기준 공제를 적용한 대략값입니다. 금융재산·부채·자녀 연령 세부사항에 따라 달라집니다.</p>';
+    var html = heroHtml(r) + '<div class="res-card">' + benefitRowsHtml(r) + quickBasisHtml(r) +
+      '<p class="hint" style="margin-top:10px">근로소득은 신청인 나이 기준 공제를 적용한 대략값입니다. 금융재산·부채·자녀 연령 세부사항에 따라 달라집니다.</p></div>';
     $('q-result').innerHTML = html;
   });
 
@@ -705,8 +761,249 @@
     if (e.key === 'Escape' && $('sidebar').classList.contains('open')) { setSidebar(false); $('btn-keys').focus(); }
   });
 
+  // ---------- 30초 사전 확인: 가구 유형 토글 · 자녀 수 스테퍼 ----------
+  function enhanceQuickForm() {
+    var sel = $('q-type');
+    if (sel && !sel.dataset.enhanced) {
+      sel.dataset.enhanced = '1';
+      var seg = document.createElement('div');
+      seg.className = 'segmented'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', '가구 유형');
+      Array.prototype.forEach.call(sel.options, function (o) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = o.textContent; b.dataset.value = o.value;
+        b.addEventListener('click', function () { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); sync(); });
+        seg.appendChild(b);
+      });
+      function sync() { seg.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.value === sel.value ? 'true' : 'false'); }); }
+      sel.addEventListener('change', sync);
+      sel.classList.add('visually-hidden'); sel.tabIndex = -1;
+      sel.parentNode.insertBefore(seg, sel);
+      // 라벨 글자를 눌러도 토글 버튼이 눌리지 않도록 라벨을 숨은 선택칸에 연결
+      if (sel.closest('label')) sel.closest('label').htmlFor = sel.id;
+      sync();
+      $('q-reset').addEventListener('click', sync);
+    }
+    ['q-kids', 'q-kids6', 'q-kidsSchool', 'q-over'].forEach(function (id) {
+      var inp = $(id);
+      if (!inp || inp.dataset.enhanced) return;
+      inp.dataset.enhanced = '1';
+      var wrap = document.createElement('span'); wrap.className = 'stepper';
+      inp.parentNode.insertBefore(wrap, inp);
+      function btn(txt, d, label) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = txt; b.className = d > 0 ? 'plus' : 'minus'; b.setAttribute('aria-label', label);
+        b.addEventListener('click', function () {
+          var v = Math.max(+inp.min || 0, Math.min(+inp.max || 10, (parseInt(inp.value, 10) || 0) + d));
+          inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        return b;
+      }
+      var name = (inp.closest('label') ? inp.closest('label').firstChild.textContent : '').trim();
+      // 라벨 안 첫 번째 버튼(−)이 라벨 클릭을 받지 않도록 라벨을 숫자칸에 직접 연결
+      if (inp.closest('label')) inp.closest('label').htmlFor = inp.id;
+      wrap.appendChild(btn('−', -1, name + ' 줄이기'));
+      wrap.appendChild(inp);
+      wrap.appendChild(btn('+', 1, name + ' 늘리기'));
+    });
+  }
+  enhanceQuickForm();
+
+
+  // =====================================================
+  // 상담 내용 저장 · 불러오기 · 마지막 작업 기억
+  //  - 30초 사전 확인 + 자격·급여 판정 입력을 한 묶음(JSON)으로 다룸
+  //  - 파일: 내 PC에 .json 파일로 내려받고, 다시 불러와 그대로 복원
+  //  - 마지막 작업: 입력할 때마다 이 브라우저(localStorage)에 자동 저장 → 다음에 열면 복원
+  // =====================================================
+  var STATE_APP = 'hanbumo-consult', STATE_VER = 1, LAST_KEY = 'hanbumo-last-work-v1';
+  var restoring = false;
+
+  function fieldValues(scope) {
+    var out = {};
+    document.querySelectorAll(scope + ' input[id], ' + scope + ' select[id]').forEach(function (el) {
+      if (el.type === 'file') return;
+      out[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    return out;
+  }
+  function setFieldValues(map) {
+    Object.keys(map || {}).forEach(function (id) {
+      var el = $(id);
+      if (!el || el.type === 'file') return;
+      if (el.type === 'checkbox') el.checked = !!map[id]; else el.value = map[id];
+    });
+  }
+
+  function collectState() {
+    saveIncomeTable();
+    var kidRows = Array.prototype.slice.call($('kids-table').querySelectorAll('tbody tr'));
+    return {
+      app: STATE_APP, version: STATE_VER, savedAt: new Date().toISOString(),
+      tab: (document.querySelector('.panel.active') || {}).id || 'tab-phone',
+      quick: { fields: fieldValues('#tab-phone'), ran: !!$('q-result').querySelector('.hero') },
+      judge: {
+        fields: fieldValues('#tab-judge'),
+        kids: readKids().map(function (k) {
+          return { name: k.name, birth: k.birth, school: k.school, raised: k.raisedByApplicant, married: k.married,
+            leave: k.leaveOfAbsence, institution: k.institution, military: k.militaryMonths, selfReliance: k.selfReliance };
+        }),
+        cars: Array.prototype.map.call($('cars-table').querySelectorAll('tbody tr'), function (tr) {
+          var o = {};
+          tr.querySelectorAll('[data-f]').forEach(function (el) { o[el.dataset.f] = el.value; });
+          o.value = manToWon(o.value);
+          return o;
+        }),
+        income: {
+          ap: incomeStore.ap || {}, sp: incomeStore.sp || {},
+          kids: kidRows.map(function (tr) { return incomeStore['k' + tr.dataset.id] || {}; })
+        },
+        judged: !!lastResult
+      }
+    };
+  }
+
+  function applyState(st) {
+    if (!st || st.app !== STATE_APP) throw new Error('한부모 상담 도우미에서 저장한 파일이 아닙니다.');
+    restoring = true;
+    try {
+      // 30초 사전 확인
+      setFieldValues(st.quick && st.quick.fields);
+      $('q-type').dispatchEvent(new Event('change'));
+      $('q-result').innerHTML = Q_RESULT_EMPTY;
+
+      // 자격·급여 판정
+      var j = st.judge || {};
+      resetForm();
+      setFieldValues(j.fields);
+      $('kids-table').querySelector('tbody').innerHTML = ''; kidSeq = 0;
+      $('cars-table').querySelector('tbody').innerHTML = ''; carSeq = 0;
+      $('income-table').innerHTML = ''; // 빈 표의 값이 저장된 소득을 덮어쓰지 않도록
+      incomeStore = { ap: (j.income && j.income.ap) || {}, sp: (j.income && j.income.sp) || {} };
+      (j.kids || []).forEach(function (k) { addKid(k); });
+      if (!(j.kids || []).length) addKid();
+      Array.prototype.forEach.call($('kids-table').querySelectorAll('tbody tr'), function (tr, i) {
+        var inc = j.income && j.income.kids && j.income.kids[i];
+        if (inc) incomeStore['k' + tr.dataset.id] = inc;
+      });
+      buildIncomeTable(true);
+      (j.cars || []).forEach(function (c) { addCar(c); });
+      updateVisibility();
+
+      // 결과가 있던 화면은 다시 계산해서 보여 줌
+      if (st.quick && st.quick.ran) $('q-run').click();
+      if (j.judged) $('btn-judge').click();
+      var tab = (st.tab || 'tab-phone').replace(/^tab-/, '');
+      if (document.querySelector('.tab[data-tab="' + tab + '"]')) showTab(tab);
+    } finally {
+      restoring = false;
+      setTimeout(markNumbers, 0);
+    }
+  }
+
+  // ---------- 파일로 저장 / 불러오기 ----------
+  function stamp(d) {
+    function p(n) { return String(n).padStart(2, '0'); }
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes());
+  }
+  function saveToFile() {
+    var st = collectState();
+    var who = ($('apName').value || '').trim().replace(/[\\/:*?"<>|\s]+/g, '_');
+    var name = '한부모상담_' + (who ? who + '_' : '') + stamp(new Date()) + '.json';
+    var blob = new Blob([JSON.stringify(st, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    toast('상담 내용을 파일로 저장했습니다: ' + name);
+  }
+  $('state-file').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    this.value = '';
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var st = JSON.parse(reader.result);
+        applyState(st);
+        saveLast();
+        toast('파일을 불러왔습니다: ' + f.name + (st.savedAt ? ' (저장 ' + new Date(st.savedAt).toLocaleString('ko-KR') + ')' : ''));
+      } catch (e) {
+        alert('파일을 불러오지 못했습니다.\n' + e.message);
+      }
+    };
+    reader.readAsText(f, 'utf-8');
+  });
+  document.querySelectorAll('[data-act="save-file"]').forEach(function (b) { b.addEventListener('click', saveToFile); });
+  document.querySelectorAll('[data-act="load-file"]').forEach(function (b) { b.addEventListener('click', function () { $('state-file').click(); }); });
+
+  // ---------- 마지막 작업 자동 저장 ----------
+  var saveTimer = null;
+  function saveLast() {
+    try { localStorage.setItem(LAST_KEY, JSON.stringify(collectState())); } catch (e) {}
+  }
+  function scheduleSave() {
+    if (restoring) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveLast, 400);
+  }
+  ['input', 'change', 'click'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (e.target && e.target.closest && e.target.closest('#tab-phone, #tab-judge, .side')) scheduleSave();
+    }, true);
+  });
+  window.addEventListener('beforeunload', function () { if (!restoring) saveLast(); });
+
+  // ---------- 안내 토스트 ----------
+  var toastTimer = null;
+  function toast(msg, actionLabel, action) {
+    var t = $('toast');
+    t.innerHTML = '<span>' + esc(msg) + '</span>' + (actionLabel ? '<button type="button" class="toast-act">' + esc(actionLabel) + '</button>' : '') +
+      '<button type="button" class="toast-x" aria-label="닫기">✕</button>';
+    t.hidden = false;
+    if (actionLabel) t.querySelector('.toast-act').addEventListener('click', function () { action(); t.hidden = true; });
+    t.querySelector('.toast-x').addEventListener('click', function () { t.hidden = true; });
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, actionLabel ? 12000 : 5000);
+  }
+
+  // 입력 내용만 비교용으로 뽑음 (저장 시각·탭·기준월 제외)
+  function contentKey(st) {
+    var jf = Object.assign({}, st.judge && st.judge.fields);
+    delete jf.baseMonth;
+    return JSON.stringify([st.quick && st.quick.fields, jf, st.judge && st.judge.kids, st.judge && st.judge.cars, st.judge && st.judge.income]);
+  }
+
+  // 페이지를 열 때 마지막 작업 복원 (빈 기본 상태면 아무것도 하지 않음)
+  function restoreLast() {
+    var st = null;
+    try { st = JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); } catch (e) {}
+    if (!st || st.app !== STATE_APP) return;
+    if (contentKey(st) === contentKey(collectState())) return;
+    try { applyState(st); } catch (e) { return; }
+    toast('마지막 작업 내용을 불러왔습니다 (' + new Date(st.savedAt).toLocaleString('ko-KR') + ')', '새로 시작', function () {
+      try { localStorage.removeItem(LAST_KEY); } catch (e) {}
+      $('q-reset').click();
+      resetForm();
+      showTab('phone');
+      saveLast();
+    });
+  }
+
+  // ---------- 0보다 큰 숫자가 들어간 입력칸 강조 ----------
+  function markNumbers() {
+    document.querySelectorAll('input.money, input[type=number]').forEach(function (el) {
+      el.classList.toggle('has-value', num(el.value) > 0);
+    });
+  }
+  var markTimer = null;
+  function scheduleMark() { clearTimeout(markTimer); markTimer = setTimeout(markNumbers, 0); }
+  // 직접 입력뿐 아니라 버튼(예시·초기화·불러오기·스테퍼 등)으로 값이 바뀐 경우도 반영
+  ['input', 'change', 'click'].forEach(function (ev) { document.addEventListener(ev, scheduleMark, true); });
+
   // 시작
   renderFaqCats(); renderFaq(); renderKeyNumbers();
   addKid();
   updateVisibility();
+  restoreLast();
+  markNumbers();
 })();
