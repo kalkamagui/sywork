@@ -59,6 +59,7 @@
     document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('active', t.dataset.tab === name); });
     document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.id === 'tab-' + name); });
     if (name === 'guide') renderGuide();
+    if (window.CareInfo && window.CareInfo.has(name)) window.CareInfo.load(name);
     window.scrollTo(0, 0);
   }
   document.querySelectorAll('.tab').forEach(function (t) {
