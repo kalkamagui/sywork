@@ -140,8 +140,8 @@
     });
   }
 
-  var CAR_TYPES = [['passenger', '승용'], ['van', '소형 이하 승합'], ['truck', '소형 이하 화물'], ['moto', '이륜'], ['other', '그 외(중형 이상 승합·화물 등)']];
-  var CAR_USES = [['general', '일반(자가용)'], ['business', '생업용'], ['disabled', '장애인사용·보철용']];
+  var CAR_TYPES = [['passenger', '승용'], ['van', '소형 이하 승합'], ['truck', '소형 이하 화물'], ['vanL', '중형 이상 승합'], ['truckL', '중형 이상 화물·특수'], ['moto', '이륜']];
+  var CAR_USES = [['general', '일반(자가용)'], ['business', '생업용'], ['disabled', '장애인사용(심한 장애·상이 1~3급)'], ['disabledMild', '장애인사용(그 외 장애)·보철용']];
   function addCar(d) {
     d = d || {};
     var id = ++carSeq;
@@ -149,7 +149,7 @@
     function opts(list, v) { return list.map(function (o) { return '<option value="' + o[0] + '"' + (v === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join(''); }
     tr.innerHTML =
       '<td><input data-f="name" placeholder="예: 아반떼" value="' + esc(d.name || '') + '"></td>' +
-      '<td><select data-f="type">' + opts(CAR_TYPES, d.type || 'passenger') + '</select></td>' +
+      '<td><select data-f="type">' + opts(CAR_TYPES, d.type === 'other' ? 'vanL' : (d.type || 'passenger')) + '</select></td>' +
       '<td><select data-f="use">' + opts(CAR_USES, d.use || 'general') + '</select></td>' +
       '<td><input data-f="cc" type="number" min="0" value="' + esc(d.cc || '') + '"></td>' +
       '<td><input data-f="seats" type="number" min="1" value="' + esc(d.seats || '') + '"></td>' +
@@ -180,8 +180,13 @@
     if ($('familyType').value === 'single' && $('reason').value === 'spouseDisabled') {
       list.push({ key: 'sp', name: '배우자', role: 'spouse' });
     }
+    var bm = $('baseMonth').value || todayMonth();
+    var base = { y: +bm.slice(0, 4), m: +bm.slice(5, 7) };
     readKids().forEach(function (k) {
-      if (k.raisedByApplicant && !k.married && !k.institution) list.push({ key: 'k' + k.id, name: k.name, role: 'child', kid: k });
+      if (!k.raisedByApplicant || k.married || k.institution) return;
+      // 자립지원 별도가구 특례 자녀는 소득인정액 산정 가구원이 아니므로 소득도 넣지 않음 (p.59, p.63)
+      if (k.selfReliance && k.birth && !Calc.classifyChild(k, base).counted) return;
+      list.push({ key: 'k' + k.id, name: k.name, role: 'child', kid: k });
     });
     return list;
   }
@@ -250,7 +255,7 @@
       foreigner: !grand && checked('foreigner'),
       applicant: { name: $('apName').value.trim(), birth: $('apBirth').value, disabled: checked('apDisabled') },
       facility: checked('facility'), livelihood: checked('livelihood'), eduBenefit: checked('eduBenefit'),
-      emergencyLiving: checked('emergency'), emergencyEdu: checked('emergency'), fosterCare: checked('fosterCare'),
+      emergencyLiving: checked('emergencyLiving'), emergencyEdu: checked('emergencyEdu'), fosterCare: checked('fosterCare'),
       cohabitWithEx: !grand && checked('cohabitWithEx'), commonLaw: !grand && checked('commonLaw'),
       birthUnregistered: !grand && checked('birthUnregistered'),
       grandParentsIncome: $('grandParentsIncome').value, grandBoth: grand && checked('grandBoth'),
@@ -329,8 +334,10 @@
         return '<tr><td>' + esc(x.name) + '</td><td>' + won(x.earned) + '</td><td>' + won(x.deduction.amount) + '</td><td style="text-align:left">' + esc(x.deduction.label) + '</td><td>' + won(x.other) + '</td></tr>';
       }).join('') + '</tbody></table></div><ul class="notes">' +
       (inc.interest ? '<li>이자소득: (연 이자 − 24만원) ÷ 12 = ' + won(inc.interest) + '</li>' : '') +
-      (inc.privateRegular ? '<li>정기 사적이전소득 ' + won(inc.privateRegular) + ' − 기준중위소득 15%(' + won(inc.privateExempt) + ') = 반영 ' + won(inc.privateCounted) + '</li>' : '') +
-      (inc.childSupport ? '<li>양육비·선지급금 ' + won(inc.childSupport) + ' 사적이전소득으로 전액 반영(보수적 계산 — 실제 반영 방식은 조사 시 확인)</li>' : '') +
+      (inc.privateTotal ? '<li>정기 사적이전소득 (' +
+        [inc.privateRegular ? '정기 지원 ' + won(inc.privateRegular) : '', inc.childSupport ? '양육비·선지급금 ' + won(inc.childSupport) : ''].filter(Boolean).join(' + ') +
+        ') − 기준중위소득 15% 제외(' + won(inc.privateExempt) + ') = 반영 ' + won(inc.privateCounted) +
+        ' — 1년 중 6회 이상 받은 정기 지원 기준. 6회 미만은 원칙적으로 미반영이나 합계가 중위 50%를 넘으면 반영(조사 시 확인)</li>' : '') +
       (inc.specialExpense ? '<li>가구특성 지출(의료비 + 국민연금 보험료 75%) ' + won(inc.specialExpense) + ' 차감</li>' : '') +
       '<li><b>소득평가액 = ' + won(inc.eval) + '</b></li></ul>' +
       '<h5>② 재산의 소득환산액 = (재산 − 기본재산액 − 부채) × 환산율 (p.151~152)</h5><ul class="notes">' +
@@ -875,6 +882,8 @@
       var j = st.judge || {};
       resetForm();
       setFieldValues(j.fields);
+      // 예전 파일: 긴급복지 생계·교육지원이 체크박스 하나(emergency)였음
+      if (j.fields && j.fields.emergency) { $('emergencyLiving').checked = true; $('emergencyEdu').checked = true; }
       $('kids-table').querySelector('tbody').innerHTML = ''; kidSeq = 0;
       $('cars-table').querySelector('tbody').innerHTML = ''; carSeq = 0;
       $('income-table').innerHTML = ''; // 빈 표의 값이 저장된 소득을 덮어쓰지 않도록

@@ -61,15 +61,21 @@ var RULES = {
   interestDeductionYear: 240000, // 이자소득 공제 (연)
   privateTransferExemptRate: 0.15, // 정기 사적이전소득 중 기준중위소득 15% 이하 제외
 
-  // 일반재산 환산율(4.17%) 적용 자동차 요건 (p.137~138)
+  // 자동차 재산가액 산정 제외(p.135) · 일반재산 환산율 4.17% 적용(p.136~138) 요건
   car: {
-    ccLimit: 2000,
+    ccLimit: 2000,              // 장애인사용·생업용 승용, 일반재산 환산 승용: 2,000cc 미만
+    disabledSevereCcLimit: 2500, // 장애 정도가 심한 장애인 본인 이동수단: 2,500cc 미만이면 일반재산
+    vanMinSeats: 11,            // 생업용 승합: 11인승 이상
+    disabledVanMaxSeats: 15,    // 장애인사용 일반재산 승합: 11~15인승
     multiChildCcLimit: 2500,
     multiChildSeats: 7,
     multiChildMinKids: 2,
     oldYears: 10,
     lowValue: 10000000,
-    motorcycleCc: 260
+    motorcycleCc: 260,
+    motorcycleMax: 2,           // 260cc 이하 이륜차는 2대까지 보유 한도와 별도로 일반재산
+    businessDailyWage: 82560,   // 생업용 소득 파악 곤란 시: 2026 최저임금 일급(8시간) × 월 15일
+    businessDays: 15
   },
 
   contacts: [
