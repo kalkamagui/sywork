@@ -155,6 +155,70 @@ test('유예 대상 기존 수급자는 2026년까지 2채째부터도 인정, 2
   assert.strictEqual(rentDebt({ debtRentGrace: true }, '2027-01'), 50000000);
 });
 
+// ---------- 대학생 등록금 지출 공제 (p.91) ----------
+test('등록금 300만원 → 월 50만원 공제 (지침 예시: 근로소득공제 후 추가 공제)', function () {
+  var r = evaluate({ applicant: { birth: '1995-01' }, incomePersons: [{ name: '신청인', birth: '1995-01', regular: 2000000 }], household: { tuition: 3000000 } });
+  assert.strictEqual(Math.round(r.income.tuitionDeduct), 500000);
+  assert.strictEqual(Math.round(r.income.eval), 480000);
+});
+test('등록금 공제는 공제 후 근로·사업소득을 넘지 않음', function () {
+  var r = evaluate({ applicant: { birth: '1995-01' }, incomePersons: [{ name: '신청인', birth: '1995-01', regular: 1000000, pension: 300000 }], household: { tuition: 6000000 } });
+  // 100만 − (60만 + 40만×30%) = 28만까지만 공제, 연금소득 30만은 그대로 반영
+  assert.strictEqual(Math.round(r.income.tuitionDeduct), 280000);
+  assert.strictEqual(Math.round(r.income.eval), 300000);
+});
+
+// ---------- 주택·농지연금 (p.100) ----------
+test('주택연금 월 100만원은 50%만 소득 반영, 누적 수령액은 부채', function () {
+  var r = evaluate({ incomePersons: [], household: { homePension: 1000000 }, assets: { homePensionTotal: 30000000 } });
+  assert.strictEqual(r.income.homePensionCounted, 500000);
+  assert.strictEqual(r.assets.debt, 30000000);
+});
+
+// ---------- 기타 산정되는 재산 (p.140~144) ----------
+test('주택 5,000만원 처분, 4,000만원 사용 확인 → 일반 1,000만원 (지침 p.142 예시)', function () {
+  var a = fin({ dispGeneral: 50000000, dispUsed: 40000000 });
+  assert.strictEqual(a.disposed.general, 10000000);
+});
+test('자연적 소비금액: 2인가구 중위 50% × 경과 개월(처분 월~기준월)', function () {
+  // 2026-01 ~ 2026-03 = 3개월 × 2,099,646원 = 6,298,938원
+  var a = fin({ dispFinancial: 20000000, dispMonth: '2026-01' });
+  assert.strictEqual(Math.round(a.disposed.financial), 20000000 - 6298938);
+});
+test('2021.6.30 이전 처분 재산은 5년이 지나면 제외', function () {
+  // 5년 경과: 제외 / 5년 미경과: 반영 (59개월 자연적 소비금액 약 1억 2,388만원을 넘는 금액으로 확인)
+  assert.strictEqual(fin({ dispGeneral: 500000000, dispMonth: '2021-05' }, '2026-06').disposed.general, 0);
+  assert.ok(fin({ dispGeneral: 500000000, dispMonth: '2021-05' }, '2026-03').disposed.general > 0);
+});
+
+// ---------- 재산범위 특례 (p.153~155) ----------
+var SMALL = { housePrice: 80000000, houseLiving: true, financial: 10000000 };
+test('근로무능력 가구: 순재산 9,100만원·금융 3,400만원 이내(그 외 지역)면 재산 전체 소득환산 제외', function () {
+  assert.ok(fin(SMALL).total > 0);
+  var a = fin(Object.assign({ allIncapable: true }, SMALL));
+  assert.strictEqual(a.special.applied, 'allIncapable');
+  assert.strictEqual(a.total, 0);
+});
+test('금융재산 기준 초과 시 특례 미적용, 재산가액만 상승한 기존 가구는 3년 추가보장', function () {
+  var over = Object.assign({ allIncapable: true }, SMALL, { housePrice: 50000000, financial: 40000000 });
+  assert.strictEqual(fin(over).special.applied, null);
+  assert.strictEqual(fin(Object.assign({ priceRiseOnly: true }, over)).special.applied, 'allIncapable');
+});
+test('100% 환산 자동차가 있으면 특례 미적용', function () {
+  var a = fin(Object.assign({ allIncapable: true, cars: [{ type: 'passenger', use: 'general', cc: 2500, age: 2, value: 5000000 }] }, SMALL));
+  assert.strictEqual(a.special.applied, null);
+});
+test('처분 곤란 재산은 기준 충족 시 그 재산만 소득환산 제외', function () {
+  var a = fin({ otherBuilding: 80000000, hardAsset: 30000000 });
+  assert.strictEqual(a.special.applied, 'hardAsset');
+  // 일반재산 8,000만 − 처분곤란 3,000만 − 기본재산 5,300만 → 0
+  assert.strictEqual(a.net.general, 0);
+});
+test('위원회 의결 제외 재산을 먼저 빼고 기본재산액 차감', function () {
+  var a = fin({ otherBuilding: 100000000, committeeExcluded: 40000000 });
+  assert.strictEqual(a.net.general, 100000000 - 40000000 - 53000000);
+});
+
 // ---------- 기존 수치 (p.58, p.88~90, p.171) ----------
 test('34세 이하 월급 200만원 → 60만 + 140만×30% = 102만원 공제', function () {
   var r = evaluate({ applicant: { birth: '1995-01' }, incomePersons: [{ name: '신청인', birth: '1995-01', regular: 2000000 }] });

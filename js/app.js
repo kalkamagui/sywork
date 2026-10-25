@@ -264,7 +264,7 @@
       incomePersons: persons,
       household: {
         interestYear: val('interestYear'), privateRegular: val('privateRegular'), childSupport: val('childSupport'),
-        medical: val('medical'), pensionPremium: val('pensionPremium')
+        medical: val('medical'), pensionPremium: val('pensionPremium'), tuition: val('tuition'), homePension: val('homePension')
       },
       assets: {
         housePrice: val('housePrice'), houseLiving: checked('houseLiving'), otherBuilding: val('otherBuilding'), land: val('land'),
@@ -272,7 +272,10 @@
         financial: val('financial'), movable: val('movable'), cars: readCars(),
         longSavings: val('longSavings'), longSavingsStartYear: $('longSavingsStartYear').value,
         debtFin: val('debtFin'), debtOther: val('debtOther'), debtRentDeposit: val('debtRentDeposit'), debtCourt: val('debtCourt'),
-        debtRentDepositOther: val('debtRentDepositOther'), debtRentGrace: checked('debtRentGrace')
+        debtRentDepositOther: val('debtRentDepositOther'), debtRentGrace: checked('debtRentGrace'), homePensionTotal: val('homePensionTotal'),
+        dispGeneral: val('dispGeneral'), dispFinancial: val('dispFinancial'), dispMonth: $('dispMonth').value, dispUsed: val('dispUsed'),
+        allIncapable: checked('allIncapable'), hardAsset: val('hardAsset'), priceRiseOnly: checked('priceRiseOnly'),
+        committeeExcluded: val('committeeExcluded')
       }
     };
   }
@@ -341,6 +344,8 @@
         ') − 기준중위소득 15% 제외(' + won(inc.privateExempt) + ') = 반영 ' + won(inc.privateCounted) +
         ' — 1년 중 6회 이상 받은 정기 지원 기준. 6회 미만은 원칙적으로 미반영이나 합계가 중위 50%를 넘으면 반영(조사 시 확인)</li>' : '') +
       (inc.specialExpense ? '<li>가구특성 지출(의료비 + 국민연금 보험료 75%) ' + won(inc.specialExpense) + ' 차감</li>' : '') +
+      (inc.tuitionDeduct ? '<li>대학생 등록금 지출 공제: 등록금 ÷ 6 = ' + won(inc.tuitionDeduct) + ' 차감 (근로·사업소득 범위 내, p.91)</li>' : '') +
+      (inc.homePension ? '<li>주택·농지연금 ' + won(inc.homePension) + ' 중 50% 공제 → ' + won(inc.homePensionCounted) + ' 반영 (p.100)</li>' : '') +
       '<li><b>소득평가액 = ' + won(inc.eval) + '</b></li></ul>' +
       '<h5>② 재산의 소득환산액 = (재산 − 기본재산액 − 부채) × 환산율 (p.151~152)</h5><ul class="notes">' +
       r.assets.steps.map(li).join('') +
@@ -448,7 +453,7 @@
   function resetForm() {
     document.querySelectorAll('#tab-judge input').forEach(function (el) {
       if (el.type === 'checkbox') el.checked = el.id === 'houseLiving';
-      else if (el.type !== 'month') el.value = '';
+      else if (el.id !== 'baseMonth') el.value = '';
     });
     $('familyType').value = 'single'; $('reason').value = 'divorce'; $('region').value = 'gyeonggi';
     $('grandParentsIncome').value = 'ok';
@@ -535,6 +540,9 @@
     if (!inp || inp.reason === 'violence') docs.push('가정폭력 확인 서류 (보호시설 입소확인서, 임시조치·보호명령 결정서, 사건결정결과통지서 등)');
     if (!inp || inp.reason === 'spouseDisabled') docs.push('배우자 장애 확인 (중증장애·장애정도가 심한 장애인 등)');
     if (!inp || inp.household.medical) docs.push('만성질환 의료비 공제: 진단서, 최근 3개월 진료비 영수증');
+    if (!inp || inp.household.tuition) docs.push('대학생 등록금 지출 공제: 등록금 납입영수증, 재학(휴학)증명서');
+    if (!inp || inp.assets.dispGeneral || inp.assets.dispFinancial) docs.push('최근 처분·증여 재산: 매매계약서·통장 거래내역, 사용처 증빙(부동산 계약서, 부채상환증명서, 의료비·교육비 영수증, 납세증명서 등)');
+    if (!inp || inp.assets.hardAsset) docs.push('처분 곤란 재산: 가압류·경매 등 등기부등본, 개발제한구역은 토지이용계획확인원 등');
     if (!inp || inp.reason === 'divorce') docs.push('이혼 확인: 협의이혼 확인서 등본(3개월 내) 또는 판결문 — 양육자 지정 확인');
     html += '<h3>02 · 준비 서류</h3><ul class="checklist">' + docs.map(li).join('') + '</ul>';
 

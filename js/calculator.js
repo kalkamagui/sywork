@@ -288,6 +288,29 @@
       steps.push('장기금융저축공제: 3년 이상 가입 상품 ' + won(longRaw) + ' 중 ' + won(longDeduct) + ' 공제(' + startYear + '년부터 ' + years + '년차 한도 ' + won(longLimit) + ') → 금융재산 ' + won(financial));
     }
 
+    // 기타 산정되는 재산: 최근 처분·증여한 재산 − (타 재산 증가분 + 본인 소비분 + 자연적 소비금액)
+    // 일반재산·자동차 처분분은 일반재산(4.17%), 금융재산 처분분은 금융재산(6.26%)
+    var dispGen = num(a.dispGeneral), dispFin = num(a.dispFinancial);
+    var dispGenLeft = 0, dispFinLeft = 0;
+    if (dispGen || dispFin) {
+      var dm = parseYM(a.dispMonth);
+      var D = R.disposed;
+      if (dm && monthIndex(dm) <= monthIndex(D.oldCutoff) && monthIndex(ctx.base) - monthIndex(dm) >= D.oldYears * 12) {
+        steps.push('처분·증여 재산 ' + won(dispGen + dispFin) + ': 2021.6.30 이전 처분·증여 후 5년 경과 → 기타 산정되는 재산 제외(p.140)');
+      } else {
+        var months = dm ? Math.max(1, monthIndex(ctx.base) - monthIndex(dm) + 1) : 0;
+        var natural = (ctx.median || 0) * D.naturalRate * months;
+        var used = num(a.dispUsed) + natural;
+        // 차감은 환산율이 높은 금융재산 처분분부터 적용 (가구에 유리, 실제 배분은 담당자 확인)
+        dispFinLeft = Math.max(0, dispFin - used);
+        dispGenLeft = Math.max(0, dispGen - Math.max(0, used - dispFin));
+        steps.push('기타 산정되는 재산: 처분·증여 ' + won(dispGen + dispFin) + ' − 타 재산 증가분·본인 소비분 ' + won(num(a.dispUsed)) +
+          (dm ? ' − 자연적 소비금액 ' + won(natural) + '(중위 50% × ' + months + '개월)' : ' (처분 월 미입력 — 자연적 소비금액 미차감)') +
+          ' = 일반 ' + won(dispGenLeft) + ' · 금융 ' + won(dispFinLeft) + ' (p.140~144)');
+        general += dispGenLeft; financial += dispFinLeft;
+      }
+    }
+
     var gross = { housing: housing, general: general, financial: financial, car100: car100 };
 
     // 임대보증금 부채: 한 채분만 인정. 유예 대상 기존 수급자는 2026년까지 2채째부터도 인정
@@ -301,7 +324,47 @@
     }
 
     // 기본재산액 → 부채 순으로 주거용 → 일반 → 금융 차감 (100% 자동차에는 미적용)
-    var debt = num(a.debtFin) + num(a.debtOther) + rentMain + rentOtherCounted + num(a.debtCourt);
+    var homePensionDebt = num(a.homePensionTotal);
+    if (homePensionDebt) steps.push('주택·농지연금 누적 수령액 ' + won(homePensionDebt) + ' → 부채로 차감(p.100)');
+    var debt = num(a.debtFin) + num(a.debtOther) + rentMain + rentOtherCounted + num(a.debtCourt) + homePensionDebt;
+
+    // ---------- 재산범위 특례 (p.153~155) ----------
+    // ④ 지방생활보장위원회 의결로 소득환산에서 제외한 재산을 먼저 빼고 나머지에 기본재산액·부채 차감
+    var committee = Math.min(num(a.committeeExcluded), gross.general);
+    if (committee) {
+      gross.general -= committee;
+      steps.push('재산범위 특례(위원회 의결): ' + won(committee) + ' 소득환산 제외 후 나머지 재산에 기본재산액·부채 차감(p.155)');
+    }
+    // ①·② 기준: 순재산(총재산 − 부채 − 공제항목, 생활준비금 제외) · 금융재산(공제 전, 기타 증여분 제외) · 100% 자동차 없음
+    var special = { applied: null, qualifies: false };
+    var hardAsset = num(a.hardAsset);
+    if (a.allIncapable || hardAsset) {
+      var S = R.propertySpecial;
+      var key = R.regions[ctx.region] ? ctx.region : 'other';
+      var netAssets = gross.housing + gross.general + finRaw + dispFinLeft - debt - longDeduct;
+      var netOk = netAssets <= S.netCap[key], finOk = finRaw <= S.finCap[key], carOk = car100 === 0;
+      special.qualifies = (netOk || !!a.priceRiseOnly) && (finOk || !!a.priceRiseOnly) && carOk;
+      var cond = '순재산 ' + won(Math.max(0, netAssets)) + ' (기준 ' + won(S.netCap[key]) + ' 이내 ' + (netOk ? '충족' : '초과') + ')' +
+        ' · 금융재산 ' + won(finRaw) + ' (기준 ' + won(S.finCap[key]) + ' 이내 ' + (finOk ? '충족' : '초과') + ')' +
+        ' · 100% 환산 자동차 ' + (carOk ? '없음' : '있음');
+      var label = a.allIncapable ? '근로무능력자로만 구성된 가구' : '재산처분이 곤란한 가구';
+      if (special.qualifies) {
+        if (!(netOk && finOk)) cond += ' — 재산가액 상승만으로 기준 초과한 기존 특례 가구: 3년간 추가보장';
+        if (a.allIncapable) {
+          special.applied = 'allIncapable';
+          gross.housing = 0; gross.general = 0; gross.financial = 0;
+          steps.push('재산범위 특례(' + label + '): ' + cond + ' → 재산 전체를 소득환산에서 제외(p.153)');
+        } else {
+          special.applied = 'hardAsset';
+          var hard = Math.min(hardAsset, gross.general);
+          gross.general -= hard;
+          steps.push('재산범위 특례(' + label + '): ' + cond + ' → 처분 곤란 재산 ' + won(hard) + ' 소득환산 제외(p.154)');
+        }
+      } else {
+        steps.push('재산범위 특례(' + label + ') 미적용: ' + cond + ' → 일반 가구와 같이 기본재산액을 공제하고 소득환산(p.155)');
+      }
+    }
+
     function deduct(amount, label) {
       var left = amount;
       ['housing', 'general', 'financial'].forEach(function (k) {
@@ -310,8 +373,10 @@
       });
       steps.push(label + ' ' + won(amount) + ' 차감(주거용 → 일반 → 금융 순)' + (left > 0 ? ', 남은 ' + won(left) + '은 반영 안 됨' : ''));
     }
-    deduct(region.basic, '기본재산액(' + region.label + ')');
-    if (debt) deduct(debt, '부채');
+    if (special.applied !== 'allIncapable') {
+      deduct(region.basic, '기본재산액(' + region.label + ')');
+      if (debt) deduct(debt, '부채');
+    }
 
     var conv = {
       housing: gross.housing * R.conversion.housing,
@@ -320,7 +385,8 @@
       car100: gross.car100 * R.conversion.car100
     };
     var total = conv.housing + conv.general + conv.financial + conv.car100;
-    return { net: gross, conv: conv, total: total, steps: steps, cars: cars, debt: debt, region: region, longDeduct: longDeduct };
+    return { net: gross, conv: conv, total: total, steps: steps, cars: cars, debt: debt, region: region, longDeduct: longDeduct,
+      disposed: { general: dispGenLeft, financial: dispFinLeft }, special: special };
   }
 
   // ---------- 메인 판정 ----------
@@ -415,13 +481,18 @@
     var privateExempt = Math.min(privateTotal, medianForSize ? medianForSize * R.privateTransferExemptRate : 0);
     var privateCounted = privateTotal - privateExempt;
     var specialExpense = num(hh.medical) + num(hh.pensionPremium) * 0.75;
+    // 대학생 등록금: 근로·사업소득에서 낸 학기 등록금 ÷ 6, 근로·사업소득(공제 후)을 넘지 않음 (p.91)
+    var tuitionDeduct = Math.min(num(hh.tuition) / R.tuitionMonths, Math.max(0, totalEarned - totalDeduct));
+    // 주택·농지연금 월 수령액: 소득으로 반영하되 50% 공제 (p.100)
+    var homePension = num(hh.homePension);
+    var homePensionCounted = homePension * (1 - R.homePensionExemptRate);
 
-    var actualIncome = totalEarned + totalOther + interest + privateTotal;
-    var incomeEval = Math.max(0, totalEarned - totalDeduct + totalOther + interest + privateCounted - specialExpense);
+    var actualIncome = totalEarned + totalOther + interest + privateTotal + homePension;
+    var incomeEval = Math.max(0, totalEarned - totalDeduct - tuitionDeduct + totalOther + interest + privateCounted + homePensionCounted - specialExpense);
 
     // ---------- 재산 ----------
     var assets = assetConversion(input.assets || {}, {
-      region: input.region, grand: grand, kidsUnder18: kidsUnder18, hasDisabled: !!(ap.disabled), base: base
+      region: input.region, grand: grand, kidsUnder18: kidsUnder18, hasDisabled: !!(ap.disabled), base: base, median: medianForSize
     });
 
     var recognized = incomeEval + assets.total;
@@ -542,7 +613,8 @@
       supportSize: supportSize, countSize: countSize,
       income: { rows: incomeRows, totalEarned: totalEarned, totalDeduct: totalDeduct, totalOther: totalOther,
         interest: interest, privateRegular: privateRegular, privateTotal: privateTotal, privateExempt: privateExempt, privateCounted: privateCounted,
-        childSupport: childSupport, specialExpense: specialExpense, actual: actualIncome, eval: incomeEval },
+        childSupport: childSupport, specialExpense: specialExpense, tuitionDeduct: tuitionDeduct,
+        homePension: homePension, homePensionCounted: homePensionCounted, actual: actualIncome, eval: incomeEval },
       assets: assets,
       recognized: recognized,
       line65: line65, line72: line72, median: median,
