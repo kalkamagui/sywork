@@ -312,6 +312,12 @@
       <label>금융재산(예금·적금·주식 등)
         <input id="financial" class="money" inputmode="numeric" placeholder="0">
       </label>
+      <label>그중 3년 이상 가입 장기저축 (예·적금·저축성보험·펀드·연금신탁·ISA)
+        <input id="longSavings" class="money" inputmode="numeric" placeholder="0">
+      </label>
+      <label>장기저축공제 시작 연도 (기존 수급자: 수급자 결정 연도와 가입 연도 중 늦은 해 · 신규 신청은 비움)
+        <input id="longSavingsStartYear" type="number" min="2000" max="2100" placeholder="예: 2025">
+      </label>
       <label>동산·분양권·조합원입주권·회원권 등
         <input id="movable" class="money" inputmode="numeric" placeholder="0">
       </label>
@@ -334,9 +340,13 @@
       <label>금융기관 외 기관 대출금
         <input id="debtOther" class="money" inputmode="numeric" placeholder="0">
       </label>
-      <label>임대보증금(세입자에게 받은 돈, 1채분)
+      <label>임대보증금(세입자에게 받은 돈, 한 채분)
         <input id="debtRentDeposit" class="money" inputmode="numeric" placeholder="0">
       </label>
+      <label>2채째부터 받은 임대보증금 합계 (여러 채 보유 시)
+        <input id="debtRentDepositOther" class="money" inputmode="numeric" placeholder="0">
+      </label>
+      <label class="chk"><input id="debtRentGrace" type="checkbox"> 2025.12.31 기준 여러 채 임대보증금 부채를 인정받은 기존 수급자 (2026년까지 유예)</label>
       <label>공증 사채(판결문·화해·조정조서)
         <input id="debtCourt" class="money" inputmode="numeric" placeholder="0">
       </label>

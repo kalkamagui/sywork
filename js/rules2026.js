@@ -58,6 +58,11 @@ var RULES = {
   conversion: { housing: 0.0104, general: 0.0417, financial: 0.0626, car100: 1.0 },
   rentDepositRatio: 0.95,       // 주택 임차보증금 적용률
   livingReserve: 5000000,       // 금융재산 생활준비금 공제 (가구당)
+  // 장기금융저축공제 (p.130~131): 3년 이상 가입 상품, 연 500만원(남은 한도 이월), 총 1,500만원
+  longSavings: { yearly: 5000000, total: 15000000 },
+  // 임대보증금 부채는 주택·상가를 여러 채 보유해도 한 채분만 인정 (p.145, 2026 개정)
+  // 2025.12.31 기준 여러 채를 인정받은 기존 수급자는 2027.1월부터 적용 (1년 유예)
+  rentDepositOneUnitFrom: { y: 2027, m: 1 },
   interestDeductionYear: 240000, // 이자소득 공제 (연)
   privateTransferExemptRate: 0.15, // 정기 사적이전소득 중 기준중위소득 15% 이하 제외
 

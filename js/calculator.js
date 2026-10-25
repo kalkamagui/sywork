@@ -276,10 +276,32 @@
     financial = Math.max(0, finRaw - R.livingReserve);
     if (finRaw) steps.push('금융재산 ' + won(finRaw) + ' − 생활준비금 ' + won(R.livingReserve) + ' = ' + won(financial));
 
+    // 장기금융저축공제: 수급자 결정 연도와 가입 연도 중 늦은 해부터 연 500만원씩 한도가 쌓임(총 1,500만원)
+    var longRaw = Math.min(num(a.longSavings), finRaw);
+    var longDeduct = 0;
+    if (longRaw && financial) {
+      var startYear = num(a.longSavingsStartYear) || ctx.base.y;
+      var years = Math.max(1, ctx.base.y - Math.min(startYear, ctx.base.y) + 1);
+      var longLimit = Math.min(R.longSavings.total, R.longSavings.yearly * years);
+      longDeduct = Math.min(longRaw, longLimit, financial);
+      financial -= longDeduct;
+      steps.push('장기금융저축공제: 3년 이상 가입 상품 ' + won(longRaw) + ' 중 ' + won(longDeduct) + ' 공제(' + startYear + '년부터 ' + years + '년차 한도 ' + won(longLimit) + ') → 금융재산 ' + won(financial));
+    }
+
     var gross = { housing: housing, general: general, financial: financial, car100: car100 };
 
+    // 임대보증금 부채: 한 채분만 인정. 유예 대상 기존 수급자는 2026년까지 2채째부터도 인정
+    var rentMain = num(a.debtRentDeposit), rentOther = num(a.debtRentDepositOther);
+    var before2027 = monthIndex(ctx.base) < monthIndex(R.rentDepositOneUnitFrom);
+    var rentOtherCounted = (a.debtRentGrace && before2027) ? rentOther : 0;
+    if (rentOther) {
+      steps.push(rentOtherCounted
+        ? '2채째부터 받은 임대보증금 ' + won(rentOther) + ': 2025.12.31 기준 여러 채를 인정받은 기존 수급자 → 2026년까지 부채 인정(2027.1월부터 한 채분만)'
+        : '2채째부터 받은 임대보증금 ' + won(rentOther) + ': 여러 채 보유 시 한 채분만 부채로 인정 → 차감 안 함(p.145)');
+    }
+
     // 기본재산액 → 부채 순으로 주거용 → 일반 → 금융 차감 (100% 자동차에는 미적용)
-    var debt = num(a.debtFin) + num(a.debtOther) + num(a.debtRentDeposit) + num(a.debtCourt);
+    var debt = num(a.debtFin) + num(a.debtOther) + rentMain + rentOtherCounted + num(a.debtCourt);
     function deduct(amount, label) {
       var left = amount;
       ['housing', 'general', 'financial'].forEach(function (k) {
@@ -298,7 +320,7 @@
       car100: gross.car100 * R.conversion.car100
     };
     var total = conv.housing + conv.general + conv.financial + conv.car100;
-    return { net: gross, conv: conv, total: total, steps: steps, cars: cars, debt: debt, region: region };
+    return { net: gross, conv: conv, total: total, steps: steps, cars: cars, debt: debt, region: region, longDeduct: longDeduct };
   }
 
   // ---------- 메인 판정 ----------
@@ -399,7 +421,7 @@
 
     // ---------- 재산 ----------
     var assets = assetConversion(input.assets || {}, {
-      region: input.region, grand: grand, kidsUnder18: kidsUnder18, hasDisabled: !!(ap.disabled)
+      region: input.region, grand: grand, kidsUnder18: kidsUnder18, hasDisabled: !!(ap.disabled), base: base
     });
 
     var recognized = incomeEval + assets.total;

@@ -119,6 +119,42 @@ test('긴급 생계지원은 생활보조금만, 교육지원은 학용품비만
   assert.ok(names(edu).indexOf('생활보조금') >= 0);
 });
 
+// ---------- 장기금융저축공제 (p.130~131) ----------
+function fin(assets, baseMonth) {
+  return evaluate({ incomePersons: [], baseMonth: baseMonth || '2026-03', assets: assets }).assets;
+}
+test('신규 신청: 장기저축 1,800만원 중 첫해 한도 500만원 공제 (지침 사례3)', function () {
+  var a = fin({ financial: 30000000, longSavings: 18000000 });
+  assert.strictEqual(a.longDeduct, 5000000);
+});
+test('2025년 결정된 기존 수급자: 2026년 2년차 누적 한도 1,000만원', function () {
+  assert.strictEqual(fin({ financial: 30000000, longSavings: 18000000, longSavingsStartYear: '2025' }).longDeduct, 10000000);
+});
+test('총한도 1,500만원, 장기저축 잔액·금융재산을 넘지 않음', function () {
+  assert.strictEqual(fin({ financial: 30000000, longSavings: 18000000, longSavingsStartYear: '2020' }).longDeduct, 15000000);
+  assert.strictEqual(fin({ financial: 30000000, longSavings: 3000000, longSavingsStartYear: '2020' }).longDeduct, 3000000);
+  // 생활준비금 500만원을 먼저 뺀 뒤 남은 금융재산까지만
+  assert.strictEqual(fin({ financial: 8000000, longSavings: 8000000, longSavingsStartYear: '2020' }).longDeduct, 3000000);
+});
+test('장기저축공제 후 금융재산 6.26% 환산', function () {
+  // 금융 3,000만 − 생활준비금 500만 − 장기저축 500만 = 2,000만 (그 외 지역 기본재산 5,300만이 먼저 차감되므로 재산 더 추가)
+  var a = fin({ financial: 30000000, longSavings: 18000000, otherBuilding: 53000000 });
+  assert.strictEqual(a.net.financial, 20000000);
+  assert.strictEqual(Math.round(a.conv.financial), 1252000);
+});
+
+// ---------- 임대보증금 부채 한 채 제한 (p.145) ----------
+function rentDebt(extra, baseMonth) {
+  return fin(Object.assign({ otherBuilding: 300000000, debtRentDeposit: 50000000, debtRentDepositOther: 30000000 }, extra), baseMonth).debt;
+}
+test('여러 채 보유: 임대보증금 부채는 한 채분만 인정', function () {
+  assert.strictEqual(rentDebt({}), 50000000);
+});
+test('유예 대상 기존 수급자는 2026년까지 2채째부터도 인정, 2027.1월부터 한 채분만', function () {
+  assert.strictEqual(rentDebt({ debtRentGrace: true }, '2026-12'), 80000000);
+  assert.strictEqual(rentDebt({ debtRentGrace: true }, '2027-01'), 50000000);
+});
+
 // ---------- 기존 수치 (p.58, p.88~90, p.171) ----------
 test('34세 이하 월급 200만원 → 60만 + 140만×30% = 102만원 공제', function () {
   var r = evaluate({ applicant: { birth: '1995-01' }, incomePersons: [{ name: '신청인', birth: '1995-01', regular: 2000000 }] });

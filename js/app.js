@@ -270,7 +270,9 @@
         housePrice: val('housePrice'), houseLiving: checked('houseLiving'), otherBuilding: val('otherBuilding'), land: val('land'),
         depositHouse: val('depositHouse'), depositShop: val('depositShop'), depositOther: val('depositOther'),
         financial: val('financial'), movable: val('movable'), cars: readCars(),
-        debtFin: val('debtFin'), debtOther: val('debtOther'), debtRentDeposit: val('debtRentDeposit'), debtCourt: val('debtCourt')
+        longSavings: val('longSavings'), longSavingsStartYear: $('longSavingsStartYear').value,
+        debtFin: val('debtFin'), debtOther: val('debtOther'), debtRentDeposit: val('debtRentDeposit'), debtCourt: val('debtCourt'),
+        debtRentDepositOther: val('debtRentDepositOther'), debtRentGrace: checked('debtRentGrace')
       }
     };
   }
