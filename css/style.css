@@ -794,3 +794,108 @@ input.has-value, fieldset.subgroup input.has-value, .edit-table input.has-value 
   color: var(--accent); font-weight: 700; background: #f5f7ff; border-color: #c7d2fe;
 }
 .money-wrap:has(input.has-value) .unit { color: var(--accent); font-weight: 600; }
+
+/* =========================================================
+   자격·급여 판정 입력폼 정렬 보정
+   - 라벨 줄 수와 상관없이 입력칸 윗선·아랫선을 맞춤
+   - 열 수는 폼 폭에 맞춰 3 → 2 → 1열로 고정
+   ========================================================= */
+#tab-judge .judge-form { container-type: inline-size; }
+#tab-judge .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 20px; align-items: stretch; }
+#tab-judge .form-grid > label { justify-content: flex-start; line-height: 1.45; font-weight: 600; color: var(--ink-2); }
+#tab-judge .form-grid > label > .help { font-weight: 400; }
+.help { font-size: 12px; line-height: 1.45; color: var(--muted); }
+#tab-judge .sub-h { font-size: 13px; font-weight: 700; color: var(--accent); margin: 20px 0 10px; }
+#tab-judge .sub-h:first-of-type { margin-top: 4px; }
+#tab-judge .chk-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; margin-top: 14px; }
+#tab-judge .hint-more { border-top: none; padding: 0; margin: 0 0 14px; }
+#tab-judge .hint-more summary { font-size: 13px; color: var(--accent); font-weight: 600; }
+#tab-judge .hint-more p { margin-top: 8px; }
+#tab-judge input:not([type=checkbox]),
+#tab-judge select { min-height: 44px; }
+#tab-judge .edit-table input:not([type=checkbox]),
+#tab-judge .edit-table select { min-height: 38px; }
+
+/* 체크박스: 입력칸과 같은 높이로 아랫선에 맞춤 */
+#tab-judge .form-grid > label.chk { align-self: start; margin-top: 25px; min-height: 44px; align-items: center; justify-content: flex-start; line-height: 1.4; font-weight: 400; }
+#tab-judge .form-grid > label.chk:has(#debtRentGrace),
+#tab-judge .form-grid > label.chk:has(#allIncapable),
+#tab-judge .form-grid > label.chk:has(#priceRiseOnly) { grid-column: 1 / -1; margin-top: 0; min-height: 32px; }
+#tab-judge .chk-group > label.chk { min-height: 32px; font-weight: 400; }
+
+/* 12개월 입력은 4열, 횟수 칸은 한 줄 전체 */
+#tab-judge #private-months { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#tab-judge #private-months > label:last-child { grid-column: 1 / -1; }
+
+/* 체크박스 묶음: 들쭉날쭉한 흐름 대신 2열 격자 */
+#tab-judge fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; align-items: center; }
+#tab-judge fieldset > label.chk { min-height: 32px; line-height: 1.4; }
+#tab-judge fieldset > label:not(.chk) { min-width: 0; }
+
+/* 표 안 금액칸 폭 줄여 가로 스크롤 완화 */
+#tab-judge .edit-table .money-wrap,
+#tab-judge .edit-table .money-wrap input.money { min-width: 120px; }
+
+@container (max-width: 680px) {
+  #tab-judge .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 560px) {
+  #tab-judge #private-months { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container (max-width: 440px) {
+  #tab-judge .form-grid { grid-template-columns: minmax(0, 1fr); }
+  #tab-judge #private-months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #tab-judge fieldset, #tab-judge .chk-group { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* =========================================================
+   자녀·자동차 입력: 표 대신 카드 한 장씩 (가로 스크롤 없음)
+   - 표 구조(tbody > tr > td[data-f])는 그대로 두고 모양만 바꿈
+   ========================================================= */
+#tab-judge #kids-table, #tab-judge #cars-table { display: block; width: 100%; }
+#tab-judge #kids-table thead, #tab-judge #cars-table thead {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+#tab-judge #kids-table tbody, #tab-judge #cars-table tbody { display: flex; flex-direction: column; gap: 12px; margin-bottom: 4px; }
+#tab-judge #kids-table tbody { counter-reset: kid; }
+#tab-judge #cars-table tbody { counter-reset: car; }
+#tab-judge #kids-table tr, #tab-judge #cars-table tr {
+  display: grid; gap: 12px 16px; position: relative;
+  padding: 14px 18px 18px; background: var(--field); border: 1px solid var(--card-line); border-radius: 16px;
+}
+#tab-judge #kids-table tr { grid-template-columns: repeat(20, minmax(0, 1fr)); }
+#tab-judge #cars-table tr { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+#tab-judge #kids-table tr::before { counter-increment: kid; content: "자녀 " counter(kid); }
+#tab-judge #cars-table tr::before { counter-increment: car; content: "자동차 " counter(car); }
+#tab-judge #kids-table tr::before, #tab-judge #cars-table tr::before {
+  grid-column: 1 / -1; font-size: 13px; font-weight: 700; color: var(--accent); line-height: 28px;
+}
+#tab-judge #kids-table td, #tab-judge #cars-table td {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 0; border: none; white-space: normal; text-align: left;
+}
+#tab-judge #kids-table td[data-label]::before, #tab-judge #cars-table td[data-label]::before {
+  content: attr(data-label); font-size: 13px; font-weight: 600; color: var(--ink-2); line-height: 1.45;
+}
+#tab-judge #kids-table td.c { flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: 8px; min-height: 32px; }
+#tab-judge #kids-table td.c::before { font-weight: 400; font-size: 14px; }
+#tab-judge #kids-table input:not([type=checkbox]), #tab-judge #kids-table select,
+#tab-judge #cars-table input, #tab-judge #cars-table select { min-height: 44px; min-width: 0; width: 100%; background: #ffffff; }
+#tab-judge #cars-table .money-wrap, #tab-judge #cars-table .money-wrap input.money { min-width: 0; }
+#tab-judge #kids-table td.del-cell, #tab-judge #cars-table td.del-cell { position: absolute; top: 10px; right: 12px; }
+
+/* 자녀: 윗줄 4칸(이름·생년월일·학적·병역), 아랫줄 5칸(체크 항목) */
+#tab-judge #kids-table td:nth-child(-n+4) { grid-column: span 5; }
+#tab-judge #kids-table td.c { grid-column: span 4; }
+/* 자동차: 윗줄 3칸(차량명·종류·용도), 아랫줄 4칸(배기량·정원·차령·가액) */
+#tab-judge #cars-table td:nth-child(-n+3) { grid-column: span 4; }
+#tab-judge #cars-table td:nth-child(n+4):nth-child(-n+7) { grid-column: span 3; }
+
+@container (max-width: 680px) {
+  #tab-judge #kids-table td:nth-child(-n+4) { grid-column: span 10; }
+  #tab-judge #kids-table td.c { grid-column: span 10; }
+  #tab-judge #cars-table td:nth-child(-n+7) { grid-column: span 6; }
+}
+@container (max-width: 440px) {
+  #tab-judge #kids-table td:nth-child(-n+4), #tab-judge #kids-table td.c,
+  #tab-judge #cars-table td:nth-child(-n+7) { grid-column: 1 / -1; }
+}

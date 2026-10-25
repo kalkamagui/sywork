@@ -104,18 +104,18 @@
     var tr = document.createElement('tr');
     tr.dataset.id = id;
     tr.innerHTML =
-      '<td><input data-f="name" placeholder="자녀' + id + '" value="' + esc(d.name || '') + '"></td>' +
-      '<td><input data-f="birth" type="date" value="' + esc(d.birth || '') + '"></td>' +
-      '<td><select data-f="school">' + SCHOOL_OPTS.map(function (o) {
+      '<td data-label="이름"><input data-f="name" placeholder="자녀' + id + '" value="' + esc(d.name || '') + '"></td>' +
+      '<td data-label="생년월일"><input data-f="birth" type="date" value="' + esc(d.birth || '') + '"></td>' +
+      '<td data-label="학적"><select data-f="school">' + SCHOOL_OPTS.map(function (o) {
         return '<option value="' + o[0] + '"' + (d.school === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
       }).join('') + '</select></td>' +
-      '<td class="c"><input data-f="raised" type="checkbox"' + (d.raised === false ? '' : ' checked') + '></td>' +
-      '<td class="c"><input data-f="married" type="checkbox"' + (d.married ? ' checked' : '') + '></td>' +
-      '<td class="c"><input data-f="leave" type="checkbox"' + (d.leave ? ' checked' : '') + '></td>' +
-      '<td class="c"><input data-f="institution" type="checkbox"' + (d.institution ? ' checked' : '') + '></td>' +
-      '<td><input data-f="military" type="number" min="0" max="48" value="' + esc(d.military || '') + '" style="min-width:60px"></td>' +
-      '<td class="c"><input data-f="selfReliance" type="checkbox"' + (d.selfReliance ? ' checked' : '') + ' title="18~34세 연령초과 자녀가 월 90만원 이상 취·창업 소득이 있어 자립지원 별도가구 특례 적용"></td>' +
-      '<td><button class="btn del" title="삭제">✕</button></td>';
+      '<td data-label="병역(개월)"><input data-f="military" type="number" min="0" max="48" value="' + esc(d.military || '') + '"></td>' +
+      '<td class="c" data-label="실제 양육"><input data-f="raised" type="checkbox"' + (d.raised === false ? '' : ' checked') + '></td>' +
+      '<td class="c" data-label="결혼"><input data-f="married" type="checkbox"' + (d.married ? ' checked' : '') + '></td>' +
+      '<td class="c" data-label="고교 휴학"><input data-f="leave" type="checkbox"' + (d.leave ? ' checked' : '') + '></td>' +
+      '<td class="c" data-label="시설·소년원"><input data-f="institution" type="checkbox"' + (d.institution ? ' checked' : '') + '></td>' +
+      '<td class="c" data-label="취·창업 특례"><input data-f="selfReliance" type="checkbox"' + (d.selfReliance ? ' checked' : '') + ' title="18~34세 연령초과 자녀가 월 90만원 이상 취·창업 소득이 있어 자립지원 별도가구 특례 적용"></td>' +
+      '<td class="del-cell"><button class="btn del" title="삭제" aria-label="자녀 삭제">✕</button></td>';
     tr.querySelector('.del').addEventListener('click', function () { tr.remove(); buildIncomeTable(); });
     tr.addEventListener('change', buildIncomeTable);
     $('kids-table').querySelector('tbody').appendChild(tr);
@@ -148,14 +148,14 @@
     var tr = document.createElement('tr');
     function opts(list, v) { return list.map(function (o) { return '<option value="' + o[0] + '"' + (v === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join(''); }
     tr.innerHTML =
-      '<td><input data-f="name" placeholder="예: 아반떼" value="' + esc(d.name || '') + '"></td>' +
-      '<td><select data-f="type">' + opts(CAR_TYPES, d.type === 'other' ? 'vanL' : (d.type || 'passenger')) + '</select></td>' +
-      '<td><select data-f="use">' + opts(CAR_USES, d.use || 'general') + '</select></td>' +
-      '<td><input data-f="cc" type="number" min="0" value="' + esc(d.cc || '') + '"></td>' +
-      '<td><input data-f="seats" type="number" min="1" value="' + esc(d.seats || '') + '"></td>' +
-      '<td><input data-f="age" type="number" min="0" value="' + esc(d.age || '') + '"></td>' +
-      '<td><input data-f="value" class="money" inputmode="numeric" value="' + (d.value ? wonToMan(d.value) : '') + '"></td>' +
-      '<td><button class="btn del" title="삭제">✕</button></td>';
+      '<td data-label="차량명"><input data-f="name" placeholder="예: 아반떼" value="' + esc(d.name || '') + '"></td>' +
+      '<td data-label="종류"><select data-f="type">' + opts(CAR_TYPES, d.type === 'other' ? 'vanL' : (d.type || 'passenger')) + '</select></td>' +
+      '<td data-label="용도"><select data-f="use">' + opts(CAR_USES, d.use || 'general') + '</select></td>' +
+      '<td data-label="배기량(cc)"><input data-f="cc" type="number" min="0" value="' + esc(d.cc || '') + '"></td>' +
+      '<td data-label="승차정원"><input data-f="seats" type="number" min="1" value="' + esc(d.seats || '') + '"></td>' +
+      '<td data-label="차령(년)"><input data-f="age" type="number" min="0" value="' + esc(d.age || '') + '"></td>' +
+      '<td data-label="차량가액(만원)"><input data-f="value" class="money" inputmode="numeric" value="' + (d.value ? wonToMan(d.value) : '') + '"></td>' +
+      '<td class="del-cell"><button class="btn del" title="삭제" aria-label="자동차 삭제">✕</button></td>';
     tr.querySelector('.del').addEventListener('click', function () { tr.remove(); });
     $('cars-table').querySelector('tbody').appendChild(tr);
   }

@@ -168,13 +168,22 @@
 
   <div class="card">
     <h2>01 · 신청인·가구</h2>
+    <h3 class="sub-h">신청인</h3>
     <div class="form-grid">
-      <label>상담 기준월
-        <input id="baseMonth" type="month">
+      <label>성명
+        <input id="apName" placeholder="홍길동">
       </label>
-      <label>거주 지역 (주민등록 기준)
+      <label>생년월일
+        <input id="apBirth" type="date">
+      </label>
+      <label>거주 지역
         <select id="region"></select>
+        <small class="help">주민등록 기준</small>
       </label>
+    </div>
+
+    <h3 class="sub-h">가구</h3>
+    <div class="form-grid">
       <label>가구 유형
         <select id="familyType">
           <option value="single">한부모가족 (모자·부자)</option>
@@ -196,14 +205,13 @@
           <option value="none">해당 없음 / 모름</option>
         </select>
       </label>
-      <label>신청인 성명
-        <input id="apName" placeholder="홍길동">
+      <label>상담 기준월
+        <input id="baseMonth" type="month">
       </label>
-      <label>신청인 생년월일
-        <input id="apBirth" type="date">
-      </label>
-      <label class="chk only-single"><input id="unmarried" type="checkbox"> 법률상 혼인기록 없음(미혼 한부모)</label>
-      <label class="chk only-single"><input id="foreigner" type="checkbox"> 외국인(국적 아동 양육)</label>
+    </div>
+    <div class="chk-group only-single">
+      <label class="chk"><input id="unmarried" type="checkbox"> 법률상 혼인기록 없음(미혼 한부모)</label>
+      <label class="chk"><input id="foreigner" type="checkbox"> 외국인(국적 아동 양육)</label>
     </div>
 
     <fieldset>
@@ -269,23 +277,28 @@
       <table class="edit-table money-table" id="income-table"></table>
     </div>
     <div class="form-grid">
-      <label>이자소득 (연간, 가구 합계)
+      <label>이자소득 (연간)
         <input id="interestYear" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">가구 합계</small>
       </label>
-      <label>매월 받는 정기 지원 (부모·친척·후원자 등, 월)
+      <label>정기 지원 (월)
         <input id="privateRegular" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">매월 받는 부모·친척·후원자 등의 지원</small>
       </label>
-      <label>매월 받는 양육비·양육비 선지급금 (월)
+      <label>양육비·선지급금 (월)
         <input id="childSupport" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">매월 받는 금액</small>
       </label>
-      <label>만성질환 의료비 (직전 3개월 월평균)
+      <label>만성질환 의료비 (월)
         <input id="medical" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">직전 3개월 월평균</small>
       </label>
       <label>국민연금 본인부담 보험료 (월)
         <input id="pensionPremium" class="money" inputmode="numeric" placeholder="0">
       </label>
-      <label>대학생 가구원 등록금 (34세 이하·1년 이내 휴학 포함, 근로·사업소득에서 낸 학기 등록금)
+      <label>대학생 가구원 등록금
         <input id="tuition" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">34세 이하·1년 이내 휴학 포함, 근로·사업소득에서 낸 학기 등록금</small>
       </label>
       <label>주택연금·농지연금 수령액 (월)
         <input id="homePension" class="money" inputmode="numeric" placeholder="0">
@@ -293,7 +306,11 @@
     </div>
 
     <h3>최근 1년 비정기 사적이전소득 (달마다 받은 금액)</h3>
-    <p class="hint">매월 일정하게 받지 않은 부모·친척·후원자 지원을 받은 달에 적습니다. 위의 "매월 받는" 금액과 합쳐 달마다 기준중위소득 15%를 넘는 금액만 반영합니다. 1년 중 6회 미만이면 반영하지 않되, 반영 대상 합계가 기준중위소득 50%를 넘으면 넘는 금액은 반영합니다(p.101). 임대보증금 마련·수술비 등 사용처가 확인된 일시 지원은 적지 않습니다.</p>
+    <p class="hint">매월 일정하지 않게 받은 부모·친척·후원자 지원을 받은 달에 적습니다.</p>
+    <details class="hint-more">
+      <summary>반영 기준 보기</summary>
+      <p class="hint">위의 "매월 받는" 금액과 합쳐 달마다 기준중위소득 15%를 넘는 금액만 반영합니다. 1년 중 6회 미만이면 반영하지 않되, 반영 대상 합계가 기준중위소득 50%를 넘으면 넘는 금액은 반영합니다(p.101). 임대보증금 마련·수술비 등 사용처가 확인된 일시 지원은 적지 않습니다.</p>
+    </details>
     <div class="form-grid" id="private-months">
       <label><span class="pm-label" data-i="11"></span><input id="priv_m11" class="money" inputmode="numeric" placeholder="0"></label>
       <label><span class="pm-label" data-i="10"></span><input id="priv_m10" class="money" inputmode="numeric" placeholder="0"></label>
@@ -307,8 +324,9 @@
       <label><span class="pm-label" data-i="2"></span><input id="priv_m2" class="money" inputmode="numeric" placeholder="0"></label>
       <label><span class="pm-label" data-i="1"></span><input id="priv_m1" class="money" inputmode="numeric" placeholder="0"></label>
       <label><span class="pm-label" data-i="0"></span><input id="priv_m0" class="money" inputmode="numeric" placeholder="0"></label>
-      <label>최근 1년 지원받은 횟수 (건, 비우면 자동: 매월 받는 금액 12회 + 금액 적은 달마다 1회)
+      <label>지원받은 횟수 (최근 1년, 건)
         <input id="privateCount" type="number" min="0" placeholder="자동">
+        <small class="help">비우면 자동: 매월 받는 금액 12회 + 금액 적은 달마다 1회</small>
       </label>
     </div>
   </div>
@@ -338,14 +356,17 @@
       <label>금융재산(예금·적금·주식 등)
         <input id="financial" class="money" inputmode="numeric" placeholder="0">
       </label>
-      <label>그중 3년 이상 가입 장기저축 (예·적금·저축성보험·펀드·연금신탁·ISA)
+      <label>장기저축 (3년 이상 가입)
         <input id="longSavings" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">예·적금·저축성보험·펀드·연금신탁·ISA</small>
       </label>
-      <label>장기저축공제 시작 연도 (기존 수급자: 수급자 결정 연도와 가입 연도 중 늦은 해 · 신규 신청은 비움)
+      <label>장기저축공제 시작 연도
         <input id="longSavingsStartYear" type="number" min="2000" max="2100" placeholder="예: 2025">
+        <small class="help">기존 수급자: 수급자 결정 연도와 가입 연도 중 늦은 해 · 신규 신청은 비움</small>
       </label>
-      <label>동산·분양권·조합원입주권·회원권 등
+      <label>동산·분양권 등
         <input id="movable" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">조합원입주권·회원권 포함</small>
       </label>
     </div>
 
@@ -366,25 +387,30 @@
       <label>금융기관 외 기관 대출금
         <input id="debtOther" class="money" inputmode="numeric" placeholder="0">
       </label>
-      <label>임대보증금(세입자에게 받은 돈, 한 채분)
+      <label>임대보증금 (한 채분)
         <input id="debtRentDeposit" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">세입자에게 받은 돈</small>
       </label>
-      <label>2채째부터 받은 임대보증금 합계 (여러 채 보유 시)
+      <label>2채째부터 임대보증금 합계
         <input id="debtRentDepositOther" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">여러 채 보유 시</small>
       </label>
       <label class="chk"><input id="debtRentGrace" type="checkbox"> 2025.12.31 기준 여러 채 임대보증금 부채를 인정받은 기존 수급자 (2026년까지 유예)</label>
-      <label>공증 사채(판결문·화해·조정조서)
+      <label>공증 사채
         <input id="debtCourt" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">판결문·화해·조정조서</small>
       </label>
-      <label>주택연금·농지연금 누적 수령액 (금융기관 대출금에 이미 잡혔으면 비움)
+      <label>주택연금·농지연금 누적 수령액
         <input id="homePensionTotal" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">금융기관 대출금에 이미 잡혔으면 비움</small>
       </label>
     </div>
 
     <h3>최근 처분·증여한 재산 (기타 산정되는 재산)</h3>
     <div class="form-grid">
-      <label>처분·증여한 토지·건물·주택·보증금·자동차 (시가표준액 등 재산 평가액)
+      <label>처분·증여한 재산
         <input id="dispGeneral" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">토지·건물·주택·보증금·자동차 (시가표준액 등 재산 평가액)</small>
       </label>
       <label>처분·증여(인출)한 금융재산
         <input id="dispFinancial" class="money" inputmode="numeric" placeholder="0">
@@ -392,20 +418,23 @@
       <label>처분·증여한 달
         <input id="dispMonth" type="month">
       </label>
-      <label>그중 확인된 사용액 (다른 재산 구입·부채 상환, 의료·교육·장례·혼례비, 위자료·재산분할, 세금 등)
+      <label>그중 확인된 사용액
         <input id="dispUsed" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">다른 재산 구입·부채 상환, 의료·교육·장례·혼례비, 위자료·재산분할, 세금 등</small>
       </label>
     </div>
 
     <h3>재산범위 특례</h3>
     <div class="form-grid">
       <label class="chk"><input id="allIncapable" type="checkbox"> 가구원 모두 근로무능력자 (재산 전체 소득환산 제외 검토)</label>
-      <label>처분이 곤란한 재산 (가압류·경매, 소유자 실종·정신질환 등, 개발제한구역 등)
+      <label>처분이 곤란한 재산
         <input id="hardAsset" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">가압류·경매, 소유자 실종·정신질환 등, 개발제한구역 등</small>
       </label>
       <label class="chk"><input id="priceRiseOnly" type="checkbox"> 기존 특례 가구로, 재산가액 상승만으로 기준을 넘음 (3년 추가보장)</label>
-      <label>지방생활보장위원회 의결로 소득환산에서 제외한 재산
+      <label>위원회 의결로 제외한 재산
         <input id="committeeExcluded" class="money" inputmode="numeric" placeholder="0">
+        <small class="help">지방생활보장위원회 의결로 소득환산에서 제외</small>
       </label>
     </div>
   </div>
