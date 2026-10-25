@@ -665,6 +665,8 @@ fieldset.subgroup input { background: #ffffff; }
 .stepper .plus { border: none; background: var(--accent); color: #ffffff; }
 fieldset.subgroup.kids .form-grid > label:first-child .stepper { max-width: calc((100% - 32px) / 3); }
 fieldset.subgroup.kids .form-grid > label:first-child input { max-width: none; }
+/* 모바일은 한 줄에 한 칸이므로 첫 칸(지원 자녀 수)도 다른 칸처럼 전체 폭 */
+@media (max-width: 560px) { fieldset.subgroup.kids .form-grid > label:first-child .stepper { max-width: none; } }
 
 /* 결과 패널: 다크 히어로 + 흰 카드 */
 .result-panel { background: transparent; border: none; box-shadow: none; padding: 0; display: flex; flex-direction: column; gap: 16px; }
