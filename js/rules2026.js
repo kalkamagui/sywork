@@ -58,18 +58,49 @@ var RULES = {
   conversion: { housing: 0.0104, general: 0.0417, financial: 0.0626, car100: 1.0 },
   rentDepositRatio: 0.95,       // 주택 임차보증금 적용률
   livingReserve: 5000000,       // 금융재산 생활준비금 공제 (가구당)
-  interestDeductionYear: 240000, // 이자소득 공제 (연)
-  privateTransferExemptRate: 0.15, // 정기 사적이전소득 중 기준중위소득 15% 이하 제외
+  // 장기금융저축공제 (p.130~131): 3년 이상 가입 상품, 연 500만원(남은 한도 이월), 총 1,500만원
+  longSavings: { yearly: 5000000, total: 15000000 },
+  // 임대보증금 부채는 주택·상가를 여러 채 보유해도 한 채분만 인정 (p.145, 2026 개정)
+  // 2025.12.31 기준 여러 채를 인정받은 기존 수급자는 2027.1월부터 적용 (1년 유예)
+  rentDepositOneUnitFrom: { y: 2027, m: 1 },
 
-  // 일반재산 환산율(4.17%) 적용 자동차 요건 (p.137~138)
+  // 대학생(34세 이하, 1년 이내 휴학 포함) 등록금을 근로·사업소득에서 낸 경우: 학기 등록금 ÷ 6을 공제 (p.91)
+  tuitionMonths: 6,
+  // 주택연금·농지연금: 월 수령액은 소득으로 반영하되 50% 공제, 누적 수령액은 부채 (p.100)
+  homePensionExemptRate: 0.5,
+
+  // 기타 산정되는 재산 (p.140~144): 처분·증여 가액 − (타 재산 증가분 + 본인 소비분 + 자연적 소비금액)
+  disposed: {
+    naturalRate: 0.5,              // 자연적 소비금액: 가구원수 기준 중위소득 50% × 경과 개월
+    oldCutoff: { y: 2021, m: 6 },  // 2021.6.30 이전 처분·증여 재산 중
+    oldYears: 5                    // 조사일 기준 5년이 지난 재산은 제외
+  },
+
+  // 재산범위 특례 (p.153~155): 순재산·금융재산 기준을 모두 충족하고 100% 환산 자동차가 없을 것
+  propertySpecial: {
+    netCap: { seoul: 143000000, gyeonggi: 125000000, metro: 120000000, other: 91000000 },
+    finCap: { seoul: 54000000, gyeonggi: 54000000, metro: 54000000, other: 34000000 }
+  },
+  interestDeductionYear: 240000, // 이자소득 공제 (연)
+  privateTransferExemptRate: 0.15, // 정기 사적이전소득: 월별 지원금액 총합 중 기준중위소득 15% 이하 제외 (p.101)
+  privateTransferRegularMin: 6,    // 최근 1년 중 6회 이상 지원받으면 정기지원
+  privateTransferLargeRate: 0.5,   // 6회 미만이라도 반영 대상 합계가 기준중위소득 50%를 넘으면 넘는 금액 반영
+
+  // 자동차 재산가액 산정 제외(p.135) · 일반재산 환산율 4.17% 적용(p.136~138) 요건
   car: {
-    ccLimit: 2000,
+    ccLimit: 2000,              // 장애인사용·생업용 승용, 일반재산 환산 승용: 2,000cc 미만
+    disabledSevereCcLimit: 2500, // 장애 정도가 심한 장애인 본인 이동수단: 2,500cc 미만이면 일반재산
+    vanMinSeats: 11,            // 생업용 승합: 11인승 이상
+    disabledVanMaxSeats: 15,    // 장애인사용 일반재산 승합: 11~15인승
     multiChildCcLimit: 2500,
     multiChildSeats: 7,
     multiChildMinKids: 2,
     oldYears: 10,
     lowValue: 10000000,
-    motorcycleCc: 260
+    motorcycleCc: 260,
+    motorcycleMax: 2,           // 260cc 이하 이륜차는 2대까지 보유 한도와 별도로 일반재산
+    businessDailyWage: 82560,   // 생업용 소득 파악 곤란 시: 2026 최저임금 일급(8시간) × 월 15일
+    businessDays: 15
   },
 
   contacts: [

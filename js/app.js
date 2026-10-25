@@ -140,8 +140,8 @@
     });
   }
 
-  var CAR_TYPES = [['passenger', '승용'], ['van', '소형 이하 승합'], ['truck', '소형 이하 화물'], ['moto', '이륜'], ['other', '그 외(중형 이상 승합·화물 등)']];
-  var CAR_USES = [['general', '일반(자가용)'], ['business', '생업용'], ['disabled', '장애인사용·보철용']];
+  var CAR_TYPES = [['passenger', '승용'], ['van', '소형 이하 승합'], ['truck', '소형 이하 화물'], ['vanL', '중형 이상 승합'], ['truckL', '중형 이상 화물·특수'], ['moto', '이륜']];
+  var CAR_USES = [['general', '일반(자가용)'], ['business', '생업용'], ['disabled', '장애인사용(심한 장애·상이 1~3급)'], ['disabledMild', '장애인사용(그 외 장애)·보철용']];
   function addCar(d) {
     d = d || {};
     var id = ++carSeq;
@@ -149,7 +149,7 @@
     function opts(list, v) { return list.map(function (o) { return '<option value="' + o[0] + '"' + (v === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join(''); }
     tr.innerHTML =
       '<td><input data-f="name" placeholder="예: 아반떼" value="' + esc(d.name || '') + '"></td>' +
-      '<td><select data-f="type">' + opts(CAR_TYPES, d.type || 'passenger') + '</select></td>' +
+      '<td><select data-f="type">' + opts(CAR_TYPES, d.type === 'other' ? 'vanL' : (d.type || 'passenger')) + '</select></td>' +
       '<td><select data-f="use">' + opts(CAR_USES, d.use || 'general') + '</select></td>' +
       '<td><input data-f="cc" type="number" min="0" value="' + esc(d.cc || '') + '"></td>' +
       '<td><input data-f="seats" type="number" min="1" value="' + esc(d.seats || '') + '"></td>' +
@@ -180,8 +180,13 @@
     if ($('familyType').value === 'single' && $('reason').value === 'spouseDisabled') {
       list.push({ key: 'sp', name: '배우자', role: 'spouse' });
     }
+    var bm = $('baseMonth').value || todayMonth();
+    var base = { y: +bm.slice(0, 4), m: +bm.slice(5, 7) };
     readKids().forEach(function (k) {
-      if (k.raisedByApplicant && !k.married && !k.institution) list.push({ key: 'k' + k.id, name: k.name, role: 'child', kid: k });
+      if (!k.raisedByApplicant || k.married || k.institution) return;
+      // 자립지원 별도가구 특례 자녀는 소득인정액 산정 가구원이 아니므로 소득도 넣지 않음 (p.59, p.63)
+      if (k.selfReliance && k.birth && !Calc.classifyChild(k, base).counted) return;
+      list.push({ key: 'k' + k.id, name: k.name, role: 'child', kid: k });
     });
     return list;
   }
@@ -213,10 +218,23 @@
     var youth = !grand && $('apBirth').value && Calc.underAge($('apBirth').value, base, RULES.age.youthParent);
     document.querySelectorAll('.only-youth').forEach(function (el) { el.style.display = youth ? '' : 'none'; });
     if ($('reason').value === 'unmarried') $('unmarried').checked = true;
+    updatePrivateMonthLabels();
   }
   ['familyType', 'reason', 'apBirth', 'baseMonth'].forEach(function (id) {
     $(id).addEventListener('change', function () { updateVisibility(); buildIncomeTable(); });
   });
+
+  // 비정기 사적이전소득 칸 이름: 기준월에서 거슬러 12개월 (priv_m0 = 기준월)
+  function updatePrivateMonthLabels() {
+    var bm = $('baseMonth').value || todayMonth();
+    var idx = +bm.slice(0, 4) * 12 + (+bm.slice(5, 7) - 1);
+    document.querySelectorAll('#private-months .pm-label').forEach(function (el) {
+      var k = idx - (+el.dataset.i);
+      el.textContent = Math.floor(k / 12) + '년 ' + (k % 12 + 1) + '월' + (el.dataset.i === '0' ? ' (기준월)' : '');
+    });
+  }
+  $('baseMonth').addEventListener('change', updatePrivateMonthLabels);
+  $('baseMonth').addEventListener('input', updatePrivateMonthLabels);
   $('apName').addEventListener('change', buildIncomeTable);
 
   $('add-kid').addEventListener('click', function () { addKid(); });
@@ -250,7 +268,7 @@
       foreigner: !grand && checked('foreigner'),
       applicant: { name: $('apName').value.trim(), birth: $('apBirth').value, disabled: checked('apDisabled') },
       facility: checked('facility'), livelihood: checked('livelihood'), eduBenefit: checked('eduBenefit'),
-      emergencyLiving: checked('emergency'), emergencyEdu: checked('emergency'), fosterCare: checked('fosterCare'),
+      emergencyLiving: checked('emergencyLiving'), emergencyEdu: checked('emergencyEdu'), fosterCare: checked('fosterCare'),
       cohabitWithEx: !grand && checked('cohabitWithEx'), commonLaw: !grand && checked('commonLaw'),
       birthUnregistered: !grand && checked('birthUnregistered'),
       grandParentsIncome: $('grandParentsIncome').value, grandBoth: grand && checked('grandBoth'),
@@ -259,13 +277,20 @@
       incomePersons: persons,
       household: {
         interestYear: val('interestYear'), privateRegular: val('privateRegular'), childSupport: val('childSupport'),
-        medical: val('medical'), pensionPremium: val('pensionPremium')
+        medical: val('medical'), pensionPremium: val('pensionPremium'), tuition: val('tuition'), homePension: val('homePension'),
+        privateMonthly: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (i) { return val('priv_m' + i); }),
+        privateCount: $('privateCount').value
       },
       assets: {
         housePrice: val('housePrice'), houseLiving: checked('houseLiving'), otherBuilding: val('otherBuilding'), land: val('land'),
         depositHouse: val('depositHouse'), depositShop: val('depositShop'), depositOther: val('depositOther'),
         financial: val('financial'), movable: val('movable'), cars: readCars(),
-        debtFin: val('debtFin'), debtOther: val('debtOther'), debtRentDeposit: val('debtRentDeposit'), debtCourt: val('debtCourt')
+        longSavings: val('longSavings'), longSavingsStartYear: $('longSavingsStartYear').value,
+        debtFin: val('debtFin'), debtOther: val('debtOther'), debtRentDeposit: val('debtRentDeposit'), debtCourt: val('debtCourt'),
+        debtRentDepositOther: val('debtRentDepositOther'), debtRentGrace: checked('debtRentGrace'), homePensionTotal: val('homePensionTotal'),
+        dispGeneral: val('dispGeneral'), dispFinancial: val('dispFinancial'), dispMonth: $('dispMonth').value, dispUsed: val('dispUsed'),
+        allIncapable: checked('allIncapable'), hardAsset: val('hardAsset'), priceRiseOnly: checked('priceRiseOnly'),
+        committeeExcluded: val('committeeExcluded')
       }
     };
   }
@@ -329,9 +354,18 @@
         return '<tr><td>' + esc(x.name) + '</td><td>' + won(x.earned) + '</td><td>' + won(x.deduction.amount) + '</td><td style="text-align:left">' + esc(x.deduction.label) + '</td><td>' + won(x.other) + '</td></tr>';
       }).join('') + '</tbody></table></div><ul class="notes">' +
       (inc.interest ? '<li>이자소득: (연 이자 − 24만원) ÷ 12 = ' + won(inc.interest) + '</li>' : '') +
-      (inc.privateRegular ? '<li>정기 사적이전소득 ' + won(inc.privateRegular) + ' − 기준중위소득 15%(' + won(inc.privateExempt) + ') = 반영 ' + won(inc.privateCounted) + '</li>' : '') +
-      (inc.childSupport ? '<li>양육비·선지급금 ' + won(inc.childSupport) + ' 사적이전소득으로 전액 반영(보수적 계산 — 실제 반영 방식은 조사 시 확인)</li>' : '') +
+      (inc.privateTotal ? '<li>사적이전소득 (' +
+        [inc.privateRegular ? '매월 정기 지원 ' + won(inc.privateRegular) : '', inc.childSupport ? '매월 양육비·선지급금 ' + won(inc.childSupport) : '',
+         inc.privateIrregularYear ? '비정기 지원 1년 합계 ' + won(inc.privateIrregularYear) : ''].filter(Boolean).join(' + ') +
+        '): 최근 1년 ' + inc.privateCount + '회 → ' + (inc.privateIsRegular ? '정기지원(6회 이상)' : '6회 미만') +
+        '. 달마다 기준중위소득 15%(' + won(inc.privateCap15) + ') 초과분 1년 합계 ' + won(inc.privateExcessYear) +
+        (inc.privateIsRegular ? '' : (inc.privateExcessYear > inc.privateLargeCap
+          ? ' − 중위 50%(' + won(inc.privateLargeCap) + ') = ' + won(inc.privateExcessYear - inc.privateLargeCap) + '만 반영'
+          : ' → 중위 50%(' + won(inc.privateLargeCap) + ') 이하')) +
+        (inc.privateCounted ? ' ÷ 12 = 월 ' + won(inc.privateCounted) + ' 반영' : ' → 반영 안 함') + ' (p.101~102)</li>' : '') +
       (inc.specialExpense ? '<li>가구특성 지출(의료비 + 국민연금 보험료 75%) ' + won(inc.specialExpense) + ' 차감</li>' : '') +
+      (inc.tuitionDeduct ? '<li>대학생 등록금 지출 공제: 등록금 ÷ 6 = ' + won(inc.tuitionDeduct) + ' 차감 (근로·사업소득 범위 내, p.91)</li>' : '') +
+      (inc.homePension ? '<li>주택·농지연금 ' + won(inc.homePension) + ' 중 50% 공제 → ' + won(inc.homePensionCounted) + ' 반영 (p.100)</li>' : '') +
       '<li><b>소득평가액 = ' + won(inc.eval) + '</b></li></ul>' +
       '<h5>② 재산의 소득환산액 = (재산 − 기본재산액 − 부채) × 환산율 (p.151~152)</h5><ul class="notes">' +
       r.assets.steps.map(li).join('') +
@@ -439,7 +473,7 @@
   function resetForm() {
     document.querySelectorAll('#tab-judge input').forEach(function (el) {
       if (el.type === 'checkbox') el.checked = el.id === 'houseLiving';
-      else if (el.type !== 'month') el.value = '';
+      else if (el.id !== 'baseMonth') el.value = '';
     });
     $('familyType').value = 'single'; $('reason').value = 'divorce'; $('region').value = 'gyeonggi';
     $('grandParentsIncome').value = 'ok';
@@ -526,6 +560,9 @@
     if (!inp || inp.reason === 'violence') docs.push('가정폭력 확인 서류 (보호시설 입소확인서, 임시조치·보호명령 결정서, 사건결정결과통지서 등)');
     if (!inp || inp.reason === 'spouseDisabled') docs.push('배우자 장애 확인 (중증장애·장애정도가 심한 장애인 등)');
     if (!inp || inp.household.medical) docs.push('만성질환 의료비 공제: 진단서, 최근 3개월 진료비 영수증');
+    if (!inp || inp.household.tuition) docs.push('대학생 등록금 지출 공제: 등록금 납입영수증, 재학(휴학)증명서');
+    if (!inp || inp.assets.dispGeneral || inp.assets.dispFinancial) docs.push('최근 처분·증여 재산: 매매계약서·통장 거래내역, 사용처 증빙(부동산 계약서, 부채상환증명서, 의료비·교육비 영수증, 납세증명서 등)');
+    if (!inp || inp.assets.hardAsset) docs.push('처분 곤란 재산: 가압류·경매 등 등기부등본, 개발제한구역은 토지이용계획확인원 등');
     if (!inp || inp.reason === 'divorce') docs.push('이혼 확인: 협의이혼 확인서 등본(3개월 내) 또는 판결문 — 양육자 지정 확인');
     html += '<h3>02 · 준비 서류</h3><ul class="checklist">' + docs.map(li).join('') + '</ul>';
 
@@ -875,6 +912,8 @@
       var j = st.judge || {};
       resetForm();
       setFieldValues(j.fields);
+      // 예전 파일: 긴급복지 생계·교육지원이 체크박스 하나(emergency)였음
+      if (j.fields && j.fields.emergency) { $('emergencyLiving').checked = true; $('emergencyEdu').checked = true; }
       $('kids-table').querySelector('tbody').innerHTML = ''; kidSeq = 0;
       $('cars-table').querySelector('tbody').innerHTML = ''; carSeq = 0;
       $('income-table').innerHTML = ''; // 빈 표의 값이 저장된 소득을 덮어쓰지 않도록

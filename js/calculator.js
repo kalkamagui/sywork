@@ -133,38 +133,109 @@
   }
 
   // ---------- 자동차 분류 ----------
+  // 차종(type): passenger 승용 / van 소형 이하 승합 / truck 소형 이하 화물 /
+  //            vanL 중형 이상 승합 / truckL 중형 이상 화물·특수 / moto 이륜 / other(예전 저장값: 중형 이상 승합·화물)
+  // 용도(use): general 일반 / business 생업용 / disabled 장애인사용(장애 정도 심함·상이 1~3급) /
+  //            disabledMild 장애인사용(그 외 장애)·보철용
+  var VANS = ['van', 'vanL', 'other'];
+  var TRUCKS = ['truck', 'truckL'];
+
+  // 차량 한 대가 해당할 수 있는 요건 (보유 한도는 classifyCars에서 따로 적용)
+  function carRules(car, ctx) {
+    var C = R.car;
+    var v = num(car.value), cc = num(car.cc), age = num(car.age), seats = num(car.seats);
+    var t = car.type || 'passenger', use = car.use || 'general';
+    var hasCc = cc > 0;
+    var oldOrCheap = age >= C.oldYears || v < C.lowValue;
+    var isVan = VANS.indexOf(t) >= 0, isTruck = TRUCKS.indexOf(t) >= 0;
+    var r = { excluded: null, disabledGeneral: null, general: null, moto: null, notes: [] };
+    var severe = use === 'disabled', mild = use === 'disabledMild';
+
+    // 가)-(1) 재산가액 산정 제외: 장애 정도가 심한 장애인(상이 1~3급) 본인 이동수단, 2,000cc 미만 (p.135)
+    if (severe && t !== 'moto' && hasCc && cc < C.ccLimit) r.excluded = { kind: 'disabled', why: '장애인사용자동차(장애 정도 심함·상이 1~3급, 2,000cc 미만) → 재산가액 산정 제외' };
+    // 가)-(2) 재산가액 산정 제외: 생업용 — 2,000cc 미만 승용, 11인승 이상 승합, 화물, 특수 (p.135)
+    if (use === 'business') {
+      if (t === 'passenger' && hasCc && cc < C.ccLimit) r.excluded = { kind: 'business', why: '생업용자동차(2,000cc 미만 승용) → 재산가액 산정 제외 (소득 파악 필요)' };
+      else if (isVan && seats >= C.vanMinSeats) r.excluded = { kind: 'business', why: '생업용자동차(11인승 이상 승합) → 재산가액 산정 제외 (소득 파악 필요)' };
+      else if (isTruck) r.excluded = { kind: 'business', why: '생업용자동차(화물·특수자동차) → 재산가액 산정 제외 (소득 파악 필요)' };
+      else r.notes.push('생업용 제외 요건(2,000cc 미만 승용·11인승 이상 승합·화물·특수) 미충족' + (isVan ? ' — 10인승 이하 전방조종자동차 등 예외는 담당자 확인' : ''));
+    }
+    // 다)-(1) 일반재산: 장애인사용자동차 1대 (장애 정도와 무관, 보철용 포함) (p.137)
+    if (severe || mild) {
+      if (t === 'passenger' && hasCc && cc < C.ccLimit) r.disabledGeneral = '장애인사용자동차(2,000cc 미만 승용)';
+      else if (isVan && seats >= C.vanMinSeats && seats <= C.disabledVanMaxSeats) r.disabledGeneral = '장애인사용자동차(11~15인승 승합)';
+      else if (t === 'truck') r.disabledGeneral = '장애인사용자동차(소형 화물, 적재 1톤 이하 확인 필요)';
+      else if (severe && t !== 'moto' && hasCc && cc < C.disabledSevereCcLimit) r.disabledGeneral = '장애 정도가 심한 장애인 본인 이동수단(2,500cc 미만)';
+    }
+    // 다)-(2)~(4) 일반재산: 차령 10년 이상 또는 1,000만원 미만 (p.137~138)
+    if (t === 'passenger' && hasCc && cc < C.ccLimit && oldOrCheap) r.general = '2,000cc 미만 승용 + 차령 10년 이상 또는 1,000만원 미만';
+    else if (t === 'passenger' && ctx.kidsUnder18 >= C.multiChildMinKids && hasCc && cc < C.multiChildCcLimit && seats >= C.multiChildSeats && oldOrCheap) {
+      r.general = '자녀 2명 이상(모두 18세 미만) 가구 2,500cc 미만 7인승 이상 + 차령 10년 이상 또는 1,000만원 미만';
+    }
+    else if ((t === 'van' || t === 'truck') && oldOrCheap) r.general = '소형 이하 승합·화물 + 차령 10년 이상 또는 1,000만원 미만';
+    // 다)-(5) 일반재산: 260cc 이하 이륜차 (2대까지 보유 한도와 별도)
+    if (t === 'moto' && hasCc && cc <= C.motorcycleCc) r.moto = '260cc 이하 이륜자동차';
+    if (!hasCc && t !== 'truck' && t !== 'truckL' && !(isVan && seats)) r.notes.push('배기량 미입력 — 배기량 기준 요건을 판정하지 못함');
+    return r;
+  }
+
+  // 보유 한도 (p.136): 일반가구 2대(생업용 1 + 일반재산 1),
+  // 장애인가구 2대(장애인사용 1 + 생업용 또는 일반재산 1). 260cc 이하 이륜차는 2대까지 별도
   function classifyCars(cars, ctx) {
     var C = R.car;
-    var out = { excluded: [], general: [], full: [] };
-    var usedDisabled = false, usedBusiness = false, usedGeneral = false;
+    var out = { excluded: [], general: [], full: [], disabledHousehold: false };
+    var list = [];
     (cars || []).forEach(function (car, i) {
       var v = num(car.value);
       if (!v && !car.type) return;
-      var item = { idx: i + 1, value: v, label: (car.name || ('자동차 ' + (i + 1))) };
-      var cc = num(car.cc), age = num(car.age), seats = num(car.seats);
-      var oldOrCheap = age >= C.oldYears || v < C.lowValue;
-      if (car.use === 'disabled' && !usedDisabled && (cc < C.ccLimit || car.type !== 'passenger')) {
-        usedDisabled = true; item.reason = '장애인사용자동차(가구별 1대) → 재산가액 산정 제외';
-        out.excluded.push(item); return;
-      }
-      if (car.use === 'business' && !usedBusiness) {
-        usedBusiness = true; item.reason = '생업용자동차(가구별 1대) → 재산가액 산정 제외 (소득 파악 필요)';
-        out.excluded.push(item); return;
-      }
-      var generalOk = false, why = '';
-      if (car.type === 'moto' && cc <= C.motorcycleCc) { generalOk = true; why = '260cc 이하 이륜자동차'; }
-      else if (car.type === 'passenger' && cc < C.ccLimit && oldOrCheap) { generalOk = true; why = '2,000cc 미만 + 차령 10년 이상 또는 1,000만원 미만'; }
-      else if (car.type === 'passenger' && ctx.kidsUnder18 >= C.multiChildMinKids && cc < C.multiChildCcLimit && seats >= C.multiChildSeats && oldOrCheap) {
-        generalOk = true; why = '자녀 2명 이상 가구 2,500cc 미만 7인승 이상 + 차령 10년 이상 또는 1,000만원 미만';
-      }
-      else if ((car.type === 'van' || car.type === 'truck') && oldOrCheap) { generalOk = true; why = '소형 이하 승합·화물 + 차령 10년 이상 또는 1,000만원 미만'; }
-      if (generalOk && !usedGeneral) { // 일반재산 환산 자동차는 가구당 1대
-        usedGeneral = true; item.reason = '일반재산 환산율(월 4.17%) 적용: ' + why;
-        out.general.push(item); return;
-      }
-      item.reason = generalOk ? '일반재산 환산 자동차 보유한도 초과 → 월 100% 환산' : '일반재산 환산 요건 미충족 → 월 100% 환산';
-      out.full.push(item);
+      list.push({ item: { idx: i + 1, value: v, label: (car.name || ('자동차 ' + (i + 1))), use: car.use || 'general' }, rule: carRules(car, ctx) });
     });
+    // 가액이 큰 차부터 유리한 칸에 배정 (같은 요건이면 비싼 차를 제외·4.17%로 두는 쪽이 가구에 유리)
+    var pending = list.slice().sort(function (a, b) { return b.item.value - a.item.value; });
+    function take(pred) {
+      for (var i = 0; i < pending.length; i++) if (pred(pending[i])) return pending.splice(i, 1)[0];
+      return null;
+    }
+    function place(c, bucket, reason) { c.item.reason = reason; out[bucket].push(c.item); }
+
+    // ① 장애인사용자동차 1대: 재산 제외(가-1) 우선, 아니면 일반재산(다-1)
+    var dis = take(function (c) { return c.rule.excluded && c.rule.excluded.kind === 'disabled'; });
+    if (dis) place(dis, 'excluded', dis.rule.excluded.why);
+    else {
+      dis = take(function (c) { return c.rule.disabledGeneral; });
+      if (dis) place(dis, 'general', '일반재산 환산율(월 4.17%) 적용: ' + dis.rule.disabledGeneral);
+    }
+    out.disabledHousehold = !!dis;
+
+    // ② 생업용 1대 · 일반재산 1대 (장애인가구는 둘 중 1대만)
+    var biz = take(function (c) { return c.rule.excluded && c.rule.excluded.kind === 'business'; });
+    if (biz) place(biz, 'excluded', biz.rule.excluded.why + (dis ? ' — 장애인가구 보유 한도(장애인사용 1 + 생업용 또는 일반재산 1)' : ''));
+    if (!(dis && biz)) {
+      var gen = take(function (c) { return c.rule.general; });
+      if (gen) place(gen, 'general', '일반재산 환산율(월 4.17%) 적용: ' + gen.rule.general);
+    }
+
+    // ③ 260cc 이하 이륜차: 2대까지 보유 한도와 별도로 일반재산
+    var motoCount = 0;
+    while (motoCount < C.motorcycleMax) {
+      var m = take(function (c) { return c.rule.moto; });
+      if (!m) break;
+      place(m, 'general', '일반재산 환산율(월 4.17%) 적용: ' + m.rule.moto + ' (2대까지 보유 한도 별도)');
+      motoCount++;
+    }
+
+    // ④ 나머지는 월 100% 환산
+    pending.forEach(function (c) {
+      var r = c.rule;
+      var qualified = r.excluded || r.disabledGeneral || r.general || r.moto;
+      var reason = qualified
+        ? '자동차 보유 한도 초과(' + (dis ? '장애인가구: 장애인사용 1 + 생업용 또는 일반재산 1' : '일반가구: 생업용 1 + 일반재산 1') + (r.moto ? ', 이륜차 3대째부터는 지방생활보장위원회 심의' : '') + ') → 월 100% 환산'
+        : '재산 제외·일반재산 환산 요건 미충족 → 월 100% 환산';
+      if (r.notes.length) reason += ' (' + r.notes.join('; ') + ')';
+      place(c, 'full', reason);
+    });
+    // 화면 표시는 입력 순서대로
+    ['excluded', 'general', 'full'].forEach(function (k) { out[k].sort(function (a, b) { return a.idx - b.idx; }); });
     return out;
   }
 
@@ -205,10 +276,95 @@
     financial = Math.max(0, finRaw - R.livingReserve);
     if (finRaw) steps.push('금융재산 ' + won(finRaw) + ' − 생활준비금 ' + won(R.livingReserve) + ' = ' + won(financial));
 
+    // 장기금융저축공제: 수급자 결정 연도와 가입 연도 중 늦은 해부터 연 500만원씩 한도가 쌓임(총 1,500만원)
+    var longRaw = Math.min(num(a.longSavings), finRaw);
+    var longDeduct = 0;
+    if (longRaw && financial) {
+      var startYear = num(a.longSavingsStartYear) || ctx.base.y;
+      var years = Math.max(1, ctx.base.y - Math.min(startYear, ctx.base.y) + 1);
+      var longLimit = Math.min(R.longSavings.total, R.longSavings.yearly * years);
+      longDeduct = Math.min(longRaw, longLimit, financial);
+      financial -= longDeduct;
+      steps.push('장기금융저축공제: 3년 이상 가입 상품 ' + won(longRaw) + ' 중 ' + won(longDeduct) + ' 공제(' + startYear + '년부터 ' + years + '년차 한도 ' + won(longLimit) + ') → 금융재산 ' + won(financial));
+    }
+
+    // 기타 산정되는 재산: 최근 처분·증여한 재산 − (타 재산 증가분 + 본인 소비분 + 자연적 소비금액)
+    // 일반재산·자동차 처분분은 일반재산(4.17%), 금융재산 처분분은 금융재산(6.26%)
+    var dispGen = num(a.dispGeneral), dispFin = num(a.dispFinancial);
+    var dispGenLeft = 0, dispFinLeft = 0;
+    if (dispGen || dispFin) {
+      var dm = parseYM(a.dispMonth);
+      var D = R.disposed;
+      if (dm && monthIndex(dm) <= monthIndex(D.oldCutoff) && monthIndex(ctx.base) - monthIndex(dm) >= D.oldYears * 12) {
+        steps.push('처분·증여 재산 ' + won(dispGen + dispFin) + ': 2021.6.30 이전 처분·증여 후 5년 경과 → 기타 산정되는 재산 제외(p.140)');
+      } else {
+        var months = dm ? Math.max(1, monthIndex(ctx.base) - monthIndex(dm) + 1) : 0;
+        var natural = (ctx.median || 0) * D.naturalRate * months;
+        var used = num(a.dispUsed) + natural;
+        // 차감은 환산율이 높은 금융재산 처분분부터 적용 (가구에 유리, 실제 배분은 담당자 확인)
+        dispFinLeft = Math.max(0, dispFin - used);
+        dispGenLeft = Math.max(0, dispGen - Math.max(0, used - dispFin));
+        steps.push('기타 산정되는 재산: 처분·증여 ' + won(dispGen + dispFin) + ' − 타 재산 증가분·본인 소비분 ' + won(num(a.dispUsed)) +
+          (dm ? ' − 자연적 소비금액 ' + won(natural) + '(중위 50% × ' + months + '개월)' : ' (처분 월 미입력 — 자연적 소비금액 미차감)') +
+          ' = 일반 ' + won(dispGenLeft) + ' · 금융 ' + won(dispFinLeft) + ' (p.140~144)');
+        general += dispGenLeft; financial += dispFinLeft;
+      }
+    }
+
     var gross = { housing: housing, general: general, financial: financial, car100: car100 };
 
+    // 임대보증금 부채: 한 채분만 인정. 유예 대상 기존 수급자는 2026년까지 2채째부터도 인정
+    var rentMain = num(a.debtRentDeposit), rentOther = num(a.debtRentDepositOther);
+    var before2027 = monthIndex(ctx.base) < monthIndex(R.rentDepositOneUnitFrom);
+    var rentOtherCounted = (a.debtRentGrace && before2027) ? rentOther : 0;
+    if (rentOther) {
+      steps.push(rentOtherCounted
+        ? '2채째부터 받은 임대보증금 ' + won(rentOther) + ': 2025.12.31 기준 여러 채를 인정받은 기존 수급자 → 2026년까지 부채 인정(2027.1월부터 한 채분만)'
+        : '2채째부터 받은 임대보증금 ' + won(rentOther) + ': 여러 채 보유 시 한 채분만 부채로 인정 → 차감 안 함(p.145)');
+    }
+
     // 기본재산액 → 부채 순으로 주거용 → 일반 → 금융 차감 (100% 자동차에는 미적용)
-    var debt = num(a.debtFin) + num(a.debtOther) + num(a.debtRentDeposit) + num(a.debtCourt);
+    var homePensionDebt = num(a.homePensionTotal);
+    if (homePensionDebt) steps.push('주택·농지연금 누적 수령액 ' + won(homePensionDebt) + ' → 부채로 차감(p.100)');
+    var debt = num(a.debtFin) + num(a.debtOther) + rentMain + rentOtherCounted + num(a.debtCourt) + homePensionDebt;
+
+    // ---------- 재산범위 특례 (p.153~155) ----------
+    // ④ 지방생활보장위원회 의결로 소득환산에서 제외한 재산을 먼저 빼고 나머지에 기본재산액·부채 차감
+    var committee = Math.min(num(a.committeeExcluded), gross.general);
+    if (committee) {
+      gross.general -= committee;
+      steps.push('재산범위 특례(위원회 의결): ' + won(committee) + ' 소득환산 제외 후 나머지 재산에 기본재산액·부채 차감(p.155)');
+    }
+    // ①·② 기준: 순재산(총재산 − 부채 − 공제항목, 생활준비금 제외) · 금융재산(공제 전, 기타 증여분 제외) · 100% 자동차 없음
+    var special = { applied: null, qualifies: false };
+    var hardAsset = num(a.hardAsset);
+    if (a.allIncapable || hardAsset) {
+      var S = R.propertySpecial;
+      var key = R.regions[ctx.region] ? ctx.region : 'other';
+      var netAssets = gross.housing + gross.general + finRaw + dispFinLeft - debt - longDeduct;
+      var netOk = netAssets <= S.netCap[key], finOk = finRaw <= S.finCap[key], carOk = car100 === 0;
+      special.qualifies = (netOk || !!a.priceRiseOnly) && (finOk || !!a.priceRiseOnly) && carOk;
+      var cond = '순재산 ' + won(Math.max(0, netAssets)) + ' (기준 ' + won(S.netCap[key]) + ' 이내 ' + (netOk ? '충족' : '초과') + ')' +
+        ' · 금융재산 ' + won(finRaw) + ' (기준 ' + won(S.finCap[key]) + ' 이내 ' + (finOk ? '충족' : '초과') + ')' +
+        ' · 100% 환산 자동차 ' + (carOk ? '없음' : '있음');
+      var label = a.allIncapable ? '근로무능력자로만 구성된 가구' : '재산처분이 곤란한 가구';
+      if (special.qualifies) {
+        if (!(netOk && finOk)) cond += ' — 재산가액 상승만으로 기준 초과한 기존 특례 가구: 3년간 추가보장';
+        if (a.allIncapable) {
+          special.applied = 'allIncapable';
+          gross.housing = 0; gross.general = 0; gross.financial = 0;
+          steps.push('재산범위 특례(' + label + '): ' + cond + ' → 재산 전체를 소득환산에서 제외(p.153)');
+        } else {
+          special.applied = 'hardAsset';
+          var hard = Math.min(hardAsset, gross.general);
+          gross.general -= hard;
+          steps.push('재산범위 특례(' + label + '): ' + cond + ' → 처분 곤란 재산 ' + won(hard) + ' 소득환산 제외(p.154)');
+        }
+      } else {
+        steps.push('재산범위 특례(' + label + ') 미적용: ' + cond + ' → 일반 가구와 같이 기본재산액을 공제하고 소득환산(p.155)');
+      }
+    }
+
     function deduct(amount, label) {
       var left = amount;
       ['housing', 'general', 'financial'].forEach(function (k) {
@@ -217,8 +373,10 @@
       });
       steps.push(label + ' ' + won(amount) + ' 차감(주거용 → 일반 → 금융 순)' + (left > 0 ? ', 남은 ' + won(left) + '은 반영 안 됨' : ''));
     }
-    deduct(region.basic, '기본재산액(' + region.label + ')');
-    if (debt) deduct(debt, '부채');
+    if (special.applied !== 'allIncapable') {
+      deduct(region.basic, '기본재산액(' + region.label + ')');
+      if (debt) deduct(debt, '부채');
+    }
 
     var conv = {
       housing: gross.housing * R.conversion.housing,
@@ -227,7 +385,8 @@
       car100: gross.car100 * R.conversion.car100
     };
     var total = conv.housing + conv.general + conv.financial + conv.car100;
-    return { net: gross, conv: conv, total: total, steps: steps, cars: cars, debt: debt, region: region };
+    return { net: gross, conv: conv, total: total, steps: steps, cars: cars, debt: debt, region: region, longDeduct: longDeduct,
+      disposed: { general: dispGenLeft, financial: dispFinLeft }, special: special };
   }
 
   // ---------- 메인 판정 ----------
@@ -314,21 +473,49 @@
     var interestYear = num(hh.interestYear);
     var interest = Math.max(0, interestYear - R.interestDeductionYear) / 12;
     var medianForSize = threshold(R.median, Math.min(Math.max(countSize, 2), 6));
-    var privateRegular = num(hh.privateRegular);
-    var privateExempt = medianForSize ? medianForSize * R.privateTransferExemptRate : 0;
-    var privateCounted = Math.max(0, privateRegular - privateExempt);
-    var childSupport = num(hh.childSupport);
+    // 정기지원 사적이전소득 (p.100~102)
+    // 최근 1년 달마다 부모·친척·후원자 지원과 양육비(선지급금 포함)를 합쳐 "월별 지원금액 총합"을 구하고,
+    // 기준 중위소득 15%를 넘는 금액만 모아 1/12을 월 소득으로 반영.
+    // 1년 중 6회 미만이면 미반영하되, 그 합이 중위 50%를 넘으면 넘는 금액만 반영
+    var privateRegular = num(hh.privateRegular);   // 매월 받는 정기 지원 (12회로 셈)
+    var childSupport = num(hh.childSupport);       // 매월 받는 양육비·선지급금 (12회로 셈)
+    var privMonthly = [];
+    for (var pm = 0; pm < 12; pm++) privMonthly.push(num((hh.privateMonthly || [])[pm]));
+    var monthsWithIrregular = privMonthly.filter(function (v) { return v > 0; }).length;
+    var autoCount = (privateRegular ? 12 : 0) + (childSupport ? 12 : 0) + monthsWithIrregular;
+    var privateCount = (hh.privateCount !== undefined && hh.privateCount !== null && String(hh.privateCount).trim() !== '') ? num(hh.privateCount) : autoCount;
+    // 기준액은 원 단위 (지침 예시: 2인 15% 629,894원, 50% 2,099,646원)
+    var cap15 = medianForSize ? Math.round(medianForSize * R.privateTransferExemptRate) : 0;
+    var privateExcessYear = privMonthly.reduce(function (s, v) { return s + Math.max(0, privateRegular + childSupport + v - cap15); }, 0);
+    var privateYear = privMonthly.reduce(function (s, v) { return s + privateRegular + childSupport + v; }, 0);
+    var privateIsRegular = privateCount >= R.privateTransferRegularMin;
+    var largeCap = medianForSize ? Math.round(medianForSize * R.privateTransferLargeRate) : 0;
+    var privateCountedYear = privateIsRegular ? privateExcessYear : Math.max(0, privateExcessYear - largeCap);
+    var privateTotal = privateYear / 12;
+    var privateCounted = privateCountedYear / 12;
+    var privateExempt = privateTotal - privateCounted;
     var specialExpense = num(hh.medical) + num(hh.pensionPremium) * 0.75;
+    // 대학생 등록금: 근로·사업소득에서 낸 학기 등록금 ÷ 6, 근로·사업소득(공제 후)을 넘지 않음 (p.91)
+    var tuitionDeduct = Math.min(num(hh.tuition) / R.tuitionMonths, Math.max(0, totalEarned - totalDeduct));
+    // 주택·농지연금 월 수령액: 소득으로 반영하되 50% 공제 (p.100)
+    var homePension = num(hh.homePension);
+    var homePensionCounted = homePension * (1 - R.homePensionExemptRate);
 
-    var actualIncome = totalEarned + totalOther + interest + privateRegular + childSupport;
-    var incomeEval = Math.max(0, totalEarned - totalDeduct + totalOther + interest + privateCounted + childSupport - specialExpense);
+    var actualIncome = totalEarned + totalOther + interest + privateTotal + homePension;
+    var incomeEval = Math.max(0, totalEarned - totalDeduct - tuitionDeduct + totalOther + interest + privateCounted + homePensionCounted - specialExpense);
 
     // ---------- 재산 ----------
     var assets = assetConversion(input.assets || {}, {
-      region: input.region, grand: grand, kidsUnder18: kidsUnder18, hasDisabled: !!(ap.disabled)
+      region: input.region, grand: grand, kidsUnder18: kidsUnder18, hasDisabled: !!(ap.disabled), base: base, median: medianForSize
     });
 
     var recognized = incomeEval + assets.total;
+
+    // 생업용자동차를 재산에서 제외했는데 근로·사업소득이 없으면 최저임금 기준 소득 적용 대상 (p.135)
+    if (assets.cars.excluded.some(function (c) { return c.use === 'business'; }) && totalEarned <= 0) {
+      var imputed = R.car.businessDailyWage * R.car.businessDays;
+      warnings.push('생업용자동차를 재산에서 제외했지만 입력된 근로·사업소득이 없습니다. 소득 파악이 어려우면 최저임금 일급 ' + won(R.car.businessDailyWage) + ' × 월 ' + R.car.businessDays + '일 = ' + won(imputed) + '을 소득으로 적용합니다(p.135). 이 금액을 소득표에 넣고 다시 판정하세요.');
+    }
 
     // ---------- 선정기준 비교 ----------
     var sizeForLine = countSize;
@@ -439,8 +626,11 @@
       kids: kids,
       supportSize: supportSize, countSize: countSize,
       income: { rows: incomeRows, totalEarned: totalEarned, totalDeduct: totalDeduct, totalOther: totalOther,
-        interest: interest, privateRegular: privateRegular, privateExempt: privateExempt, privateCounted: privateCounted,
-        childSupport: childSupport, specialExpense: specialExpense, actual: actualIncome, eval: incomeEval },
+        interest: interest, privateRegular: privateRegular, privateTotal: privateTotal, privateExempt: privateExempt,
+        privateCount: privateCount, privateIsRegular: privateIsRegular, privateExcessYear: privateExcessYear,
+        privateCap15: cap15, privateLargeCap: largeCap, privateIrregularYear: privMonthly.reduce(function (s, v) { return s + v; }, 0), privateCounted: privateCounted,
+        childSupport: childSupport, specialExpense: specialExpense, tuitionDeduct: tuitionDeduct,
+        homePension: homePension, homePensionCounted: homePensionCounted, actual: actualIncome, eval: incomeEval },
       assets: assets,
       recognized: recognized,
       line65: line65, line72: line72, median: median,
@@ -452,7 +642,7 @@
     };
   }
 
-  var api = { evaluate: evaluate, underAge: underAge, ageInYears: ageInYears, won: won, man: man, num: num, SCHOOL_LABEL: SCHOOL_LABEL };
+  var api = { evaluate: evaluate, classifyChild: classifyChild, underAge: underAge, ageInYears: ageInYears, won: won, man: man, num: num, SCHOOL_LABEL: SCHOOL_LABEL };
   if (typeof module !== 'undefined') module.exports = api;
   else root.HanbumoCalc = api;
 })(this);
