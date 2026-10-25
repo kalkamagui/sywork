@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only — Copyright (C) 2026 kalkamagui */
 /* 화면 동작: 탭, 입력폼, 판정 결과, 신청 안내, 전화상담 */
 (function () {
   var Calc = window.HanbumoCalc;

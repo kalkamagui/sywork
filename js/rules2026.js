@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only — Copyright (C) 2026 kalkamagui */
 /*
  * 2026년 한부모가족지원사업 안내 지침 기준값
  * 연도가 바뀌면 이 파일의 수치만 새 지침에 맞춰 고치면 됩니다.

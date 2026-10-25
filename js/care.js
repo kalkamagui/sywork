@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only — Copyright (C) 2026 kalkamagui */
 /*
  * 참고 자료 메뉴: 성평등가족부 누리집 정책 안내 페이지
  * 메뉴를 열 때마다 원문 페이지를 실시간으로 불러와 보기 좋게 정리해 보여 줍니다.

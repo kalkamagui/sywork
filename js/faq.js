@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only — Copyright (C) 2026 kalkamagui */
 /*
  * 전화상담용 Q&A — 2026년 한부모가족지원사업 안내 지침 요약
  * page: 지침 인쇄 쪽수 (FAQ n = 제6장 자주하는 질문 번호)

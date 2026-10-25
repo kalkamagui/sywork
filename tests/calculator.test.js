@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only — Copyright (C) 2026 kalkamagui */
 /*
  * 계산 로직 회귀 테스트 — 설치 없이 실행: node tests/calculator.test.js
  * 괄호 안 쪽수는 「2026년 한부모가족지원사업 안내」 인쇄 쪽수

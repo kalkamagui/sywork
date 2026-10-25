@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-only — Copyright (C) 2026 kalkamagui */
 /*
  * 한부모가족 지원대상 판정 및 복지급여 모의계산
  * 입력(input) 구조는 app.js 의 collectInput() 참고.
