@@ -183,9 +183,8 @@
     var bm = $('baseMonth').value || todayMonth();
     var base = { y: +bm.slice(0, 4), m: +bm.slice(5, 7) };
     readKids().forEach(function (k) {
-      if (!k.raisedByApplicant || k.married || k.institution) return;
-      // 자립지원 별도가구 특례 자녀는 소득인정액 산정 가구원이 아니므로 소득도 넣지 않음 (p.59, p.63)
-      if (k.selfReliance && k.birth && !Calc.classifyChild(k, base).counted) return;
+      // 판정과 같은 기준: 소득인정액 산정 가구원(양육·미혼·시설 미입소·생년월일 입력, 자립 특례 제외)만 소득 열을 둠
+      if (!Calc.classifyChild(k, base).counted) return;
       list.push({ key: 'k' + k.id, name: k.name, role: 'child', kid: k });
     });
     return list;
@@ -519,7 +518,7 @@
     html += '<p class="hint" style="margin:0">신청 안내 · ' + new Date().toLocaleDateString('ko-KR') + '</p>';
     html += '<h2>' + (r ? esc(name) : '한부모가족 지원 신청 안내') + '</h2>';
     if (!r) {
-      html += '<p class="hint">② 탭에서 판정을 하면 신청인 상황에 맞춘 안내가 만들어집니다. 아래는 공통 안내입니다.</p>';
+      html += '<p class="hint">[자격·급여 판정]에서 판정을 하면 신청인 상황에 맞춘 안내가 만들어집니다. 아래는 공통 안내입니다.</p>';
     } else {
       html += '<div class="tiles">' +
         tile('가구 유형', esc(r.typeLabel) + ' · ' + r.supportSize + '인') +
@@ -618,7 +617,7 @@
       children: children,
       incomePersons: [{ name: '신청인', birth: apBirth, regular: manToWon($('q-earned').value), publicTransfer: manToWon($('q-other').value) }],
       household: {},
-      assets: { housePrice: manToWon($('q-house').value), houseLiving: true, financial: manToWon($('q-fin').value), cars: cars, debtFin: manToWon($('q-debt').value) }
+      assets: { housePrice: manToWon($('q-house').value), houseLiving: true, depositHouse: manToWon($('q-deposit').value), financial: manToWon($('q-fin').value), cars: cars, debtFin: manToWon($('q-debt').value) }
     };
   }
   $('q-run').addEventListener('click', function () {
@@ -666,7 +665,7 @@
     $('q-age').value = '';
     $('q-kids').value = '1';
     ['q-kids6', 'q-kidsSchool', 'q-over'].forEach(function (id) { $(id).value = '0'; });
-    ['q-earned', 'q-other', 'q-house', 'q-fin', 'q-debt', 'q-carValue'].forEach(function (id) { $(id).value = ''; });
+    ['q-earned', 'q-other', 'q-house', 'q-deposit', 'q-fin', 'q-debt', 'q-carValue'].forEach(function (id) { $(id).value = ''; });
     $('q-result').innerHTML = Q_RESULT_EMPTY;
     $('q-age').focus();
   });
@@ -682,6 +681,7 @@
     incomeStore.ap = { regular: wonToMan(qi.incomePersons[0].regular), publicTransfer: wonToMan(qi.incomePersons[0].publicTransfer) };
     buildIncomeTable(true);
     if (qi.assets.housePrice) $('housePrice').value = wonToMan(qi.assets.housePrice);
+    if (qi.assets.depositHouse) $('depositHouse').value = wonToMan(qi.assets.depositHouse);
     if (qi.assets.financial) $('financial').value = wonToMan(qi.assets.financial);
     if (qi.assets.debtFin) $('debtFin').value = wonToMan(qi.assets.debtFin);
     qi.assets.cars.forEach(function (c) {
@@ -694,7 +694,7 @@
     $('btn-judge').click();
     $('result').insertAdjacentHTML('afterbegin',
       '<div class="transfer-note"><b>전화상담에서 넘겨받은 값으로 판정했습니다.</b>' +
-      '자녀 생년월일은 나이 구간으로 추정한 값입니다. 실제 생년월일·학적, 주택이 자가인지 전·월세인지, 자동차 배기량·차령을 확인해 고친 뒤 [판정하기]를 다시 누르세요.</div>');
+      '자녀 생년월일은 나이 구간으로 추정한 값입니다. 실제 생년월일·학적, 주택 시가표준액·보증금, 자동차 배기량·차령을 확인해 고친 뒤 [판정하기]를 다시 누르세요.</div>');
   });
 
   // FAQ
@@ -744,7 +744,7 @@
       tile('자립촉진수당', '월 ' + man(B.youthSelfReliance)) +
       '</div>' +
       '<h3>소득인정액 기준 (월, 원)</h3>' +
-      '<table class="data-table"><thead><tr><th>가구원</th><th>급여 65%</th><th>청소년 72%</th></tr></thead><tbody>' +
+      '<table class="data-table"><thead><tr><th>가구원</th><th>급여 기준 65%</th><th>청소년 증명서 72%</th></tr></thead><tbody>' +
       sizes.map(function (s) {
         return '<tr><td>' + s + '인</td><td class="em">' + RULES.line65[s].toLocaleString('ko-KR') + '</td><td>' + RULES.line72[s].toLocaleString('ko-KR') + '</td></tr>';
       }).join('') +

@@ -113,6 +113,35 @@ test('22세 미만 취학 자녀(산업기능요원 등)도 자립 특례 체크
   assert.strictEqual(r.countSize, 2);
 });
 
+// ---------- 결혼한 자녀 (p.57, p.61) ----------
+test('결혼한 자녀는 18세 미만이어도 지원·산정 가구원에서 제외, 아동양육비 없음', function () {
+  var married = { name: '둘째', birth: '2009-05', school: 'high', raisedByApplicant: true, married: true };
+  var k = Calc.classifyChild(married, { y: 2026, m: 3 });
+  assert.deepStrictEqual([k.supported, k.counted, k.childCare], [false, false, false]);
+  var r = evaluate({ children: [KID, married] });
+  assert.strictEqual(r.countSize, 2);
+  assert.strictEqual(r.benefits.filter(function (b) { return b.name.indexOf('아동양육비 — ') === 0; }).length, 1);
+});
+test('결혼한 22세 미만 대학생 자녀도 가구원 제외', function () {
+  var k = Calc.classifyChild({ birth: '2006-01', school: 'univ', raisedByApplicant: true, married: true }, { y: 2026, m: 3 });
+  assert.deepStrictEqual([k.supported, k.counted], [false, false]);
+});
+test('생년월일이 없는 자녀는 산정 가구원이 아님 (소득표 열도 같은 기준)', function () {
+  assert.strictEqual(Calc.classifyChild({ name: '셋째', birth: '', school: 'elem', raisedByApplicant: true }, { y: 2026, m: 3 }).counted, false);
+});
+
+// ---------- 30초 사전 확인: 보증금과 자가 주택 구분 (p.58, p.141) ----------
+test('주택 전·월세보증금은 0.95를 곱해 주거용재산', function () {
+  var a = fin({ depositHouse: 100000000 });
+  assert.strictEqual(a.net.housing, 95000000 - 53000000);
+});
+test('조손가족: 실거주 주택은 제외하지만 전·월세보증금은 재산에 포함', function () {
+  var house = evaluate({ familyType: 'grand', reason: 'grand', incomePersons: [], assets: { housePrice: 100000000, houseLiving: true } }).assets;
+  assert.strictEqual(house.net.housing, 0);
+  var dep = evaluate({ familyType: 'grand', reason: 'grand', incomePersons: [], assets: { depositHouse: 100000000 } }).assets;
+  assert.strictEqual(dep.net.housing, 95000000 - 53000000);
+});
+
 // ---------- 다자녀 가구 자동차 (p.138) ----------
 var MULTI_CAR = [{ type: 'passenger', use: 'general', cc: 2200, seats: 7, age: 11, value: 5000000 }];
 test('다자녀 자동차 기준: 양육하는 18세 미만 자녀 2명이면 일반재산 4.17%', function () {

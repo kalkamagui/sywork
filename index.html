@@ -34,7 +34,7 @@
     <div id="side-summary" class="side-summary"></div>
   </div>
 
-  <p class="side-note">근거: 2026년 한부모가족지원사업 안내(여성가족부). 결과는 상담용 모의계산이며, 실제 선정·급여는 사회보장정보시스템 공적자료 조사 결과로 결정됩니다.</p>
+  <p class="side-note">근거: 2026년 한부모가족지원사업 안내(성평등가족부). 결과는 상담용 모의계산이며, 실제 선정·급여는 사회보장정보시스템 공적자료 조사 결과로 결정됩니다.</p>
 </nav>
 <div class="app-main">
 
@@ -104,10 +104,13 @@
         <label>그 밖의 월 소득(연금·실업급여 등)
           <input id="q-other" class="money" inputmode="numeric" placeholder="0">
         </label>
-        <label class="row-start">전·월세 보증금 또는 사는 집 가액
+        <label class="row-start">사는 집 가액 (자가)
           <input id="q-house" class="money" inputmode="numeric" placeholder="0">
         </label>
-        <label>예금·적금 등 금융재산
+        <label>전·월세 보증금
+          <input id="q-deposit" class="money" inputmode="numeric" placeholder="0">
+        </label>
+        <label class="row-start">예금·적금 등 금융재산
           <input id="q-fin" class="money" inputmode="numeric" placeholder="0">
         </label>
         <label>부채 (대출금·임대보증금 등)
@@ -258,7 +261,7 @@
 
   <div class="card">
     <h2>02 · 자녀(손자녀)</h2>
-    <p class="hint">함께 살지 않아도 신청인이 실제 양육하면 "실제 양육"에 체크하세요. 연령을 넘긴 미혼 자녀도 입력해야 소득인정액 가구원수가 맞습니다.</p>
+    <p class="hint">함께 살지 않아도 신청인이 실제 양육하면 "실제 양육"에 체크하세요. 연령을 넘긴 미혼 자녀도 입력해야 소득인정액 가구원수가 맞습니다. 생년월일을 입력해야 아래 소득표에 그 자녀 열이 생기며, 결혼한 자녀는 가구원에서 빠집니다.</p>
     <div class="table-scroll">
       <table class="edit-table" id="kids-table">
         <thead><tr>
