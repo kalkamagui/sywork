@@ -660,6 +660,8 @@
       assets: assets,
       recognized: recognized,
       line65: line65, line72: line72, median: median,
+      // 소득인정액이 산정 가구원수 기준 중위소득의 몇 %인지 (7인 이상은 지침 표 밖이라 null)
+      medianPct: median ? recognized / median * 100 : null,
       pass65: pass65, pass72: pass72, pass100: pass100,
       eligibleBasic: eligibleBasic, eligible: eligible, certOnly: certOnly,
       benefits: benefits, monthly: monthly, yearlyExtra: yearlyExtra,

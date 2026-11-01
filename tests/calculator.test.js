@@ -331,6 +331,20 @@ test('위원회 의결 제외 재산을 먼저 빼고 기본재산액 차감', f
   assert.strictEqual(a.net.general, 100000000 - 40000000 - 53000000);
 });
 
+// ---------- 기준 중위소득 대비 % ----------
+test('소득인정액 98만원 → 2인 기준 중위소득 4,199,292원의 23.3%', function () {
+  var r = evaluate({ applicant: { birth: '1995-01' }, incomePersons: [{ name: '신청인', birth: '1995-01', regular: 2000000 }] });
+  assert.strictEqual(Math.round(r.recognized), 980000);
+  assert.strictEqual(r.medianPct.toFixed(1), '23.3');
+});
+test('7인 이상 가구는 지침 표에 중위소득이 없어 % 없음', function () {
+  var kids = [];
+  for (var i = 0; i < 6; i++) kids.push({ name: '자녀' + i, birth: '2015-05', school: 'elem', raisedByApplicant: true });
+  var r = evaluate({ children: kids });
+  assert.strictEqual(r.countSize, 7);
+  assert.strictEqual(r.medianPct, null);
+});
+
 // ---------- 기존 수치 (p.58, p.88~90, p.171) ----------
 test('34세 이하 월급 200만원 → 60만 + 140만×30% = 102만원 공제', function () {
   var r = evaluate({ applicant: { birth: '1995-01' }, incomePersons: [{ name: '신청인', birth: '1995-01', regular: 2000000 }] });
