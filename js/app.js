@@ -465,7 +465,7 @@
     return r.medianPct == null ? '담당자 확인' : r.medianPct.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
   }
   function kpi(k, v, sub) { return '<div class="kpi"><span class="k">' + k + '</span><span class="v">' + v + '</span><span class="s">' + sub + '</span></div>'; }
-  function tile(k, v) { return '<div class="tile"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
+  function tile(k, v, sub) { return '<div class="tile"><span class="k">' + k + '</span><span class="v">' + v + '</span>' + (sub ? '<span class="s">' + sub + '</span>' : '') + '</div>'; }
   function stat(k, v) { return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
   function li(x) { return '<li>' + esc(x) + '</li>'; }
 
@@ -530,10 +530,10 @@
     } else {
       html += '<div class="tiles">' +
         tile('가구 유형', esc(r.typeLabel) + ' · ' + r.supportSize + '인') +
-        tile('소득인정액', '월 ' + won(r.recognized)) +
+        tile('소득인정액', '월 ' + won(r.recognized), '기준 중위소득의 ' + medianPctText(r)) +
         tile('예상 급여', r.eligible ? '<span style="color:var(--accent)">월 ' + won(r.monthly) + '</span>' : '해당 없음') +
         '</div><ul class="notes">' +
-        '<li>소득인정액 산정 가구원 ' + r.countSize + '인' + (r.line65 ? ' · 선정기준(65%) ' + won(r.line65) : '') + '</li>' +
+        '<li>소득인정액 산정 가구원 ' + r.countSize + '인' + (r.median ? ' · 기준 중위소득 ' + won(r.median) + ' 대비 ' + medianPctText(r) : '') + (r.line65 ? ' · 선정기준(65%) ' + won(r.line65) : '') + '</li>' +
         (r.eligible
           ? (r.yearlyExtra ? '<li>학용품비 연 ' + won(r.yearlyExtra) + ' (7월)</li>' : '') +
             r.benefits.filter(function (b) { return b.amount; }).map(function (b) { return '<li>' + esc(b.name) + ': ' + b.unit + ' ' + won(b.amount) + '</li>'; }).join('')

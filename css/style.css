@@ -198,6 +198,7 @@ mark { background: #fef08a; color: inherit; border-radius: 2px; }
 .tile { background: #fff; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; }
 .tile .k { font-size: 12px; color: var(--muted); }
 .tile .v { font-size: 18px; font-weight: 700; }
+.tile .s { font-size: 12px; color: var(--muted); }
 
 /* ---------- 신청 안내 ---------- */
 #tab-guide .printable { max-width: 760px; margin: 0 auto; }
