@@ -474,6 +474,7 @@
     var r = Calc.evaluate(input);
     lastResult = r; lastInput = input;
     renderResult(r, input);
+    setKeyResult(r, 'judge');
   });
 
   // ---------- 초기화·예시 ----------
@@ -490,6 +491,7 @@
     $('result').innerHTML = RESULT_EMPTY;
     if ($('judge-kpis')) { $('judge-kpis').hidden = true; $('judge-kpis').innerHTML = ''; }
     lastResult = null; lastInput = null;
+    clearKeyResult('judge');
     addKid();
     updateVisibility();
   }
@@ -633,6 +635,7 @@
     var html = heroHtml(r) + '<div class="res-card">' + benefitRowsHtml(r) + quickBasisHtml(r) +
       '<p class="hint" style="margin-top:10px">근로소득은 신청인 나이 기준 공제를 적용한 대략값입니다. 금융재산·부채·자녀 연령 세부사항에 따라 달라집니다.</p></div>';
     $('q-result').innerHTML = html;
+    setKeyResult(r, 'quick');
   });
 
   // 30초 사전 확인: 자동차 입력 아래에 재산 제외 · 4.17% · 100% 판정 사유를 바로 표시
@@ -730,6 +733,7 @@
     ['q-kids6', 'q-kidsSchool', 'q-over'].forEach(function (id) { $(id).value = '0'; });
     ['q-earned', 'q-other', 'q-house', 'q-deposit', 'q-fin', 'q-debt', 'q-carCc', 'q-carAge', 'q-carValue', 'q-carSeats'].forEach(function (id) { $(id).value = ''; });
     $('q-result').innerHTML = Q_RESULT_EMPTY;
+    clearKeyResult('quick');
     updateCarNote();
     $('q-age').focus();
   });
@@ -793,11 +797,23 @@
   }
   $('faq-search').addEventListener('input', renderFaq);
 
+  // 핵심 숫자 사이드바에 보여 줄 현재 상담 결과 (마지막으로 실행한 자격·급여 판정 또는 30초 사전 확인)
+  var keyResult = null, keyResultFrom = null;
+  function setKeyResult(r, from) { keyResult = r; keyResultFrom = from; renderKeyNumbers(); }
+  function clearKeyResult(from) { if (keyResultFrom === from) setKeyResult(null, null); }
+
   function renderKeyNumbers() {
     var sizes = [2, 3, 4, 5, 6];
     var B = RULES.benefit;
     var C = RULES.conversion;
-    var html =
+    var r = keyResult;
+    var html = r
+      ? '<h3>현재 상담 <small>' + (keyResultFrom === 'quick' ? '30초 사전 확인' : '자격·급여 판정') + '</small></h3><div class="tiles">' +
+        tile('소득인정액', '월 ' + won(r.recognized), r.countSize + '인 가구') +
+        tile('기준 중위소득 대비', medianPctText(r), r.median ? r.countSize + '인 중위 ' + man(r.median) : '7인 이상은 지침 표 밖') +
+        '</div>'
+      : '';
+    html +=
       '<h3>급여 단가</h3><div class="tiles">' +
       tile('아동양육비', '월 ' + man(B.childCare)) +
       tile('추가아동양육비', '월 ' + man(B.extraChildCare)) +
@@ -807,9 +823,9 @@
       tile('자립촉진수당', '월 ' + man(B.youthSelfReliance)) +
       '</div>' +
       '<h3>소득인정액 기준 (월, 원)</h3>' +
-      '<table class="data-table"><thead><tr><th>가구원</th><th>급여 기준 65%</th><th>청소년 증명서 72%</th></tr></thead><tbody>' +
+      '<table class="data-table"><thead><tr><th>가구</th><th>중위소득 100%</th><th>급여 기준 65%</th><th>청소년 증명서 72%</th></tr></thead><tbody>' +
       sizes.map(function (s) {
-        return '<tr><td>' + s + '인</td><td class="em">' + RULES.line65[s].toLocaleString('ko-KR') + '</td><td>' + RULES.line72[s].toLocaleString('ko-KR') + '</td></tr>';
+        return '<tr' + (r && r.countSize === s ? ' class="strong cur"' : '') + '><td>' + s + '인' + (r && r.countSize === s ? ' ◀' : '') + '</td><td>' + RULES.median[s].toLocaleString('ko-KR') + '</td><td class="em">' + RULES.line65[s].toLocaleString('ko-KR') + '</td><td>' + RULES.line72[s].toLocaleString('ko-KR') + '</td></tr>';
       }).join('') +
       '</tbody></table>' +
       '<p class="hint" style="margin-top:6px">한부모가족복지시설 입소: 기준 중위소득 100% 이하</p>' +

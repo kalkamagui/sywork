@@ -377,6 +377,8 @@ fieldset.subgroup.kids .form-grid > label:first-child input { max-width: calc((1
 .sb-body .tile { padding: 12px 14px; }
 .sb-body .tile .v { font-size: 15px; }
 .sb-body .data-table td.em { font-weight: 700; color: var(--accent); }
+.sb-body .data-table tr.cur td { background: var(--soft); }
+.sb-body h3 small { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 4px; }
 .kv { list-style: none; margin: 0; padding: 0; }
 .kv li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
 .kv li span { color: var(--label); }
