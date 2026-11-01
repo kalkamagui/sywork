@@ -345,6 +345,31 @@ test('7인 이상 가구는 지침 표에 중위소득이 없어 % 없음', func
   assert.strictEqual(r.medianPct, null);
 });
 
+// ---------- 기초생활보장 급여·차상위계층 (참고) ----------
+test('2인 소득인정액 98만원: 생계·의료·주거·교육·차상위 선정기준액과 생계급여 예상액', function () {
+  var r = evaluate({ applicant: { birth: '1995-01' }, incomePersons: [{ name: '신청인', birth: '1995-01', regular: 2000000 }] });
+  var w = {}; r.welfare.forEach(function (x) { w[x.key] = x; });
+  // 4,199,292원 × 32% / 40% / 48% / 50%, 원 단위 반올림
+  assert.deepStrictEqual([w.livelihood.line, w.medical.line, w.housing.line, w.education.line, w.nextLowest.line],
+    [1343773, 1679717, 2015660, 2099646, 2099646]);
+  assert.ok(r.welfare.every(function (x) { return x.pass; }));
+  assert.strictEqual(Math.round(w.livelihood.amount), 1343773 - 980000);
+});
+test('4인 생계급여 선정기준은 2,078,316원 (보건복지부 고시 금액과 일치)', function () {
+  var kids = [1, 2, 3].map(function (i) { return { name: '자녀' + i, birth: '2015-05', school: 'elem', raisedByApplicant: true }; });
+  var r = evaluate({ children: kids });
+  assert.strictEqual(r.countSize, 4);
+  assert.strictEqual(r.welfare[0].line, 2078316);
+});
+test('소득인정액이 기준을 넘으면 해당 급여는 기준 초과, 7인 이상은 계산 안 함', function () {
+  var r = evaluate({ incomePersons: [{ name: '신청인', birth: '1985-01', regular: 2500000 }] });
+  var w = {}; r.welfare.forEach(function (x) { w[x.key] = x; });
+  assert.strictEqual(w.livelihood.pass, false);
+  assert.strictEqual(w.livelihood.amount, 0);
+  var kids = []; for (var i = 0; i < 6; i++) kids.push({ name: 'k' + i, birth: '2015-05', school: 'elem', raisedByApplicant: true });
+  assert.deepStrictEqual(evaluate({ children: kids }).welfare, []);
+});
+
 // ---------- 기존 수치 (p.58, p.88~90, p.171) ----------
 test('34세 이하 월급 200만원 → 60만 + 140만×30% = 102만원 공제', function () {
   var r = evaluate({ applicant: { birth: '1995-01' }, incomePersons: [{ name: '신청인', birth: '1995-01', regular: 2000000 }] });

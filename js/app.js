@@ -324,7 +324,7 @@
     var el = $('result');
     var ratio = r.line65 ? Math.min(100, r.recognized / r.line65 * 100) : 0;
     var html = heroHtml(r, '<button class="btn hero-btn" id="to-guide" type="button">신청 안내 보기 →</button>');
-    html += '<div class="res-card">' + flowHtml(r) + benefitRowsHtml(r);
+    html += '<div class="res-card">' + flowHtml(r) + benefitRowsHtml(r) + welfareHtml(r);
 
     html += '<div class="stats">' +
       stat('가구 유형', esc(r.typeLabel) + (r.applicantAge != null ? ' · 만 ' + r.applicantAge + '세' : '')) +
@@ -434,6 +434,20 @@
         '<span class="b-txt"><b>' + esc(b.name) + '</b><small>' + esc(b.detail) + '</small></span>' +
         '<span class="b-amt">' + (b.amount ? (b.unit === '월' ? '' : b.unit + ' ') + Math.round(b.amount).toLocaleString('ko-KR') : '해당 없음') + '</span></li>';
     }).join('') + '</ul>';
+  }
+  // 같은 소득인정액으로 본 기초생활보장 급여·차상위계층 (참고)
+  function welfareHtml(r) {
+    if (!r.welfare || !r.welfare.length) {
+      return r.countSize > 6 ? '<h4>다른 복지급여 <small>참고</small></h4><p class="hint">7인 이상 가구는 지침 표에 기준 중위소득이 없어 기초생활보장·차상위 기준을 계산하지 않습니다. 담당자 확인.</p>' : '';
+    }
+    var ICON = { livelihood: ['생', 'indigo'], medical: ['의', 'mint'], housing: ['주', 'amber'], education: ['교', 'amber'], nextLowest: ['차', 'slate'] };
+    return '<h4>다른 복지급여 <small>참고 · 같은 소득인정액 기준</small></h4><ul class="b-rows">' + r.welfare.map(function (w) {
+      var ic = ICON[w.key] || ['·', 'slate'];
+      return '<li class="' + (w.pass ? '' : 'zero') + '"><span class="b-ico ' + ic[1] + '" aria-hidden="true">' + ic[0] + '</span>' +
+        '<span class="b-txt"><b>' + esc(w.name) + '</b><small>중위 ' + Math.round(w.rate * 100) + '% · ' + r.countSize + '인 ' + won(w.line) + ' 이하 · ' + esc(w.note) + '</small></span>' +
+        '<span class="b-amt">' + (w.pass ? (w.amount ? '월 ' + Math.round(w.amount).toLocaleString('ko-KR') : '대상 가능') : '기준 초과') + '</span></li>';
+    }).join('') + '</ul>' +
+      '<p class="hint">한부모가족 지원은 기초생활보장 기준으로 소득인정액을 계산하되 부양의무자와 무료 임차 소득을 보지 않고, 함께 사는 부모·형제를 빼고 한부모 가구만 봅니다(p.58·59·82). 그래서 기초생활보장·차상위 판정은 이와 다를 수 있으니 신청하여 조사로 확인하세요. 한부모 아동양육비는 생계급여 등과 함께 받을 수 있습니다.</p>';
   }
   function flowHtml(r) {
     if (!r.line65) return '';
@@ -545,6 +559,11 @@
           ? (r.yearlyExtra ? '<li>학용품비 연 ' + won(r.yearlyExtra) + ' (7월)</li>' : '') +
             r.benefits.filter(function (b) { return b.amount; }).map(function (b) { return '<li>' + esc(b.name) + ': ' + b.unit + ' ' + won(b.amount) + '</li>'; }).join('')
           : '<li>' + (r.certOnly ? '한부모가족증명서 발급 대상(복지급여는 기준 초과)' : '모의계산상 복지급여 기준 미충족 — 실제 조사 결과에 따라 달라질 수 있으므로 신청은 가능합니다') + '</li>') +
+        (r.welfare && r.welfare.some(function (w) { return w.pass; })
+          ? '<li>함께 신청을 검토할 급여(참고): ' + r.welfare.filter(function (w) { return w.pass; }).map(function (w) {
+              return esc(w.name) + (w.amount ? ' 예상 월 ' + won(w.amount) : '');
+            }).join(', ') + ' — 기초생활보장·차상위 판정은 별도 조사로 결정</li>'
+          : '') +
         '</ul><p class="hint">※ 실제 금액·선정 여부는 신청 후 소득·재산 조사로 결정됩니다.</p>';
     }
 
@@ -637,7 +656,7 @@
   }
   $('q-run').addEventListener('click', function () {
     var r = Calc.evaluate(quickInput());
-    var html = heroHtml(r) + '<div class="res-card">' + benefitRowsHtml(r) + quickBasisHtml(r) +
+    var html = heroHtml(r) + '<div class="res-card">' + benefitRowsHtml(r) + welfareHtml(r) + quickBasisHtml(r) +
       '<p class="hint" style="margin-top:10px">근로소득은 신청인 나이 기준 공제를 적용한 대략값입니다. 금융재산·부채·자녀 연령 세부사항에 따라 달라집니다.</p></div>';
     $('q-result').innerHTML = html;
     setKeyResult(r, 'quick');

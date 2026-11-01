@@ -662,6 +662,13 @@
       line65: line65, line72: line72, median: median,
       // 소득인정액이 산정 가구원수 기준 중위소득의 몇 %인지 (7인 이상은 지침 표 밖이라 null)
       medianPct: median ? recognized / median * 100 : null,
+      // 같은 소득인정액으로 본 기초생활보장 급여·차상위계층 해당 여부 (참고용, 7인 이상은 빈 목록)
+      welfare: median ? R.welfare.map(function (w) {
+        var line = Math.round(median * w.rate);
+        var pass = recognized <= line;
+        return { key: w.key, name: w.name, rate: w.rate, line: line, pass: pass, note: w.note,
+          amount: w.key === 'livelihood' && pass ? line - recognized : 0 };
+      }) : [],
       pass65: pass65, pass72: pass72, pass100: pass100,
       eligibleBasic: eligibleBasic, eligible: eligible, certOnly: certOnly,
       benefits: benefits, monthly: monthly, yearlyExtra: yearlyExtra,
