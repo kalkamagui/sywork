@@ -825,7 +825,7 @@
       '<h3>소득인정액 기준 (월, 원)</h3>' +
       '<table class="data-table"><thead><tr><th>가구</th><th>중위소득 100%</th><th>급여 기준 65%</th><th>청소년 증명서 72%</th></tr></thead><tbody>' +
       sizes.map(function (s) {
-        return '<tr' + (r && r.countSize === s ? ' class="strong cur"' : '') + '><td>' + s + '인' + (r && r.countSize === s ? ' ◀' : '') + '</td><td>' + RULES.median[s].toLocaleString('ko-KR') + '</td><td class="em">' + RULES.line65[s].toLocaleString('ko-KR') + '</td><td>' + RULES.line72[s].toLocaleString('ko-KR') + '</td></tr>';
+        return '<tr' + (r && r.countSize === s ? ' class="strong cur"' : '') + '><td>' + s + '인</td><td>' + RULES.median[s].toLocaleString('ko-KR') + '</td><td class="em">' + RULES.line65[s].toLocaleString('ko-KR') + '</td><td>' + RULES.line72[s].toLocaleString('ko-KR') + '</td></tr>';
       }).join('') +
       '</tbody></table>' +
       '<p class="hint" style="margin-top:6px">한부모가족복지시설 입소: 기준 중위소득 100% 이하</p>' +
