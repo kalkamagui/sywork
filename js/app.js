@@ -709,7 +709,8 @@
       (as.net.car100 ? kv('일반환산 불가 자동차 ' + won(as.net.car100) + ' × 100%', won(as.conv.car100)) : '') +
       kv('재산 소득환산액', won(as.total), 'sum') + '</ul>';
     h += '<p class="basis-step">③ 소득인정액</p><ul class="kv">' +
-      kv(won(inc.eval) + ' + ' + won(as.total), won(r.recognized), 'sum');
+      kv(won(inc.eval) + ' + ' + won(as.total), won(r.recognized), 'sum') +
+      kv(r.median ? r.countSize + '인 기준 중위소득 ' + won(r.median) + ' 대비' : '기준 중위소득 대비', medianPctText(r));
     if (r.line65) {
       h += kv(r.countSize + '인 선정기준 (중위소득 65%)', won(r.line65)) +
         kv(r.recognized <= r.line65 ? '기준까지 여유' : '기준 초과', won(Math.abs(r.line65 - r.recognized)), r.recognized <= r.line65 ? 'ok' : 'over');
