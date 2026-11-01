@@ -691,7 +691,10 @@ fieldset.subgroup.kids .form-grid > label:first-child input { max-width: none; }
 .ring { flex: none; }
 .hero-rows { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
 .hero-rows div { display: flex; justify-content: space-between; gap: 8px; }
-.hero-rows span { color: #94a3b8; }
+.hero-rows span { color: #94a3b8; white-space: nowrap; }
+/* 좁은 휴대폰: 원형 그래프를 줄여 오른쪽 항목 이름("3인 기준 중위소득" 등)이 한 줄에 들어가게 */
+@media (max-width: 480px) { .hero-gauge { gap: 12px; } .ring { width: 96px; height: 96px; } }
+@media (max-width: 380px) { .hero-rows { font-size: 12px; } }
 .hero-rows b { font-weight: 700; }
 .hero-rows b.pos { color: #34d399; }
 .hero-rows b.neg { color: #fb7185; }

@@ -409,7 +409,8 @@
       var pct = r.recognized / r.line65 * 100, over = r.recognized > r.line65;
       h += '<div class="hero-gauge">' + ringSvg(pct, over) + '<div class="hero-rows">' +
         '<div><span>소득인정액</span><b>' + Math.round(r.recognized).toLocaleString('ko-KR') + '</b></div>' +
-        '<div><span>기준 중위소득 대비</span><b>' + medianPctText(r) + '</b></div>' +
+        '<div><span>' + r.countSize + '인 기준 중위소득</span><b>' + (r.median ? r.median.toLocaleString('ko-KR') : '담당자 확인') + '</b></div>' +
+        '<div><span>중위소득 대비</span><b>' + medianPctText(r) + '</b></div>' +
         '<div><span>' + r.countSize + '인 기준 65%</span><b>' + r.line65.toLocaleString('ko-KR') + '</b></div>' +
         '<div><span>' + (over ? '초과' : '여유') + '</span><b class="' + (over ? 'neg' : 'pos') + '">' + (over ? '+' : '+') + Math.round(Math.abs(r.line65 - r.recognized)).toLocaleString('ko-KR') + '</b></div>' +
         '</div></div>';
@@ -456,13 +457,17 @@
     box.innerHTML =
       kpi('소득평가액', won(inc.eval), inc.totalEarned ? '근로 ' + man(inc.totalEarned) + ' − 공제 ' + man(inc.totalDeduct) : '근로·사업소득 없음') +
       kpi('재산 소득환산액', won(r.assets.total), '주거 ' + man(r.assets.conv.housing) + ' · 일반 ' + man(r.assets.conv.general) + ' · 금융 ' + man(r.assets.conv.financial)) +
-      kpi('소득인정액', '<span class="accent">' + won(r.recognized) + '</span>', '월 기준 · 기준 중위소득의 ' + medianPctText(r)) +
+      kpi('소득인정액', '<span class="accent">' + won(r.recognized) + '</span>', medianLineText(r)) +
       kpi(r.countSize + '인 선정기준 (65%)', r.line65 ? won(r.line65) : '표 밖', r.line65 ? '<span class="' + (over ? 'neg' : 'pos') + '">' + (over ? '초과 ' : '여유 +') + won(Math.abs(r.line65 - r.recognized)) + '</span>' : '담당자 확인');
     box.hidden = false;
   }
   // 기준 중위소득 대비 % (소수 첫째 자리). 7인 이상은 지침 표에 중위소득이 없어 표시하지 않음
   function medianPctText(r) {
     return r.medianPct == null ? '담당자 확인' : r.medianPct.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  }
+  // "3인 기준 중위소득 5,359,036원 대비 20.9%" (7인 이상은 지침 표 밖)
+  function medianLineText(r) {
+    return r.median ? r.countSize + '인 기준 중위소득 ' + won(r.median) + ' 대비 ' + medianPctText(r) : r.countSize + '인 기준 중위소득: 담당자 확인';
   }
   function kpi(k, v, sub) { return '<div class="kpi"><span class="k">' + k + '</span><span class="v">' + v + '</span><span class="s">' + sub + '</span></div>'; }
   function tile(k, v, sub) { return '<div class="tile"><span class="k">' + k + '</span><span class="v">' + v + '</span>' + (sub ? '<span class="s">' + sub + '</span>' : '') + '</div>'; }
@@ -532,7 +537,7 @@
     } else {
       html += '<div class="tiles">' +
         tile('가구 유형', esc(r.typeLabel) + ' · ' + r.supportSize + '인') +
-        tile('소득인정액', '월 ' + won(r.recognized), '기준 중위소득의 ' + medianPctText(r)) +
+        tile('소득인정액', '월 ' + won(r.recognized), medianLineText(r)) +
         tile('예상 급여', r.eligible ? '<span style="color:var(--accent)">월 ' + won(r.monthly) + '</span>' : '해당 없음') +
         '</div><ul class="notes">' +
         '<li>소득인정액 산정 가구원 ' + r.countSize + '인' + (r.median ? ' · 기준 중위소득 ' + won(r.median) + ' 대비 ' + medianPctText(r) : '') + (r.line65 ? ' · 선정기준(65%) ' + won(r.line65) : '') + '</li>' +
